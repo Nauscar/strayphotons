@@ -48,15 +48,24 @@ target_include_directories(sp
 )
 
 target_link_libraries(sp PRIVATE
-    sp-rs
+    ${PROJECT_CORE_LIB}
     ${PROJECT_GAME_LIB}
     ${PROJECT_INPUT_WINIT_LIB}
     ${PROJECT_GRAPHICS_VULKAN_WINIT_LIB}
     "$<IF:$<BOOL:${WIN32}>,${PROJECT_AUDIO_LIB},>"
-    ${PROJECT_PHYSICS_PHYSX_LIB}
+    #${PROJECT_PHYSICS_PHYSX_LIB}
     ${PROJECT_SCRIPTS_LIB}
+    sp-rs
     cxxopts
 )
+
+target_link_libraries(sp PUBLIC
+    android # FIXME
+    log
+    vulkan
+)
+
+target_link_directories(sp PUBLIC "${ANDROID_NDK}/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib/aarch64-linux-android/24/") # FIXME
 
 if(WIN32)
     target_link_libraries(sp PUBLIC winmm)

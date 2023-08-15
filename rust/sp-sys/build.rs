@@ -21,20 +21,28 @@ fn main() -> Result<(), Box<dyn Error>> {
     let mut sp = Config::new("../../");
 
     //#[cfg(target_os = "android")] // FIXME: check env::var("TARGET")
-    // sp.define("ANDROID_NDK", env::var("NDK_HOME")?);
-    // sp.define("CMAKE_ANDROID_API", "24"); // min api version for ndk vulkan support
+    if let Ok(ndk) = std::env::var("NDK_HOME") {
+        //sp.define("CMAKE_SYSTEM_NAME", "Android"); // NOTE: enables armv7 support
+        sp.define("ANDROID_NDK", ndk.clone());
+        sp.define("CMAKE_ANDROID_NDK", ndk);
+        sp.define("CMAKE_ANDROID_API", "34"); // min api version for ndk vulkan support: 24
+    }
+    println!("cargo:rerun-if-env-changed=ANDROID_NDK");
 
     let sp = sp
         .generator("Ninja")
         .pic(true)
         .static_crt(true)
         .uses_cxx11()
-        .always_configure(true)
+        .always_configure(false)
         .build_target("sp")
         .build();
 
-    debug!("Rust output dir: {}", sp.display());
-    debug!("CMake link dir: {}", bin_dir.display());
+    #[cfg(feature = "debug")]
+    {
+        debug!("Rust output dir: {}", sp.display());
+        debug!("CMake link dir: {}", bin_dir.display());
+    }
 
     println!("cargo:rerun-if-changed=../../include/strayphotons.h");
     println!("cargo:rustc-link-search=native={}/build/src", sp.display()); // Static library path

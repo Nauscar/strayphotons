@@ -5,11 +5,11 @@
 # If a copy of the MPL was not distributed with this file, You can obtain one at https://mozilla.org/MPL/2.0/.
 #
 
-if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-    set(CARGO_CMD cargo build --verbose)
+if (CMAKE_BUILD_TYPE STREQUAL "Debug")
+    set(CARGO_CMD cargo build --verbose --target aarch64-linux-android) # FIXME
     set(CARGO_TARGET_DIR "debug")
-else()
-    set(CARGO_CMD cargo build --release --verbose)
+else ()
+    set(CARGO_CMD cargo build --release --verbose --target aarch64-linux-android) # FIXME
     set(CARGO_TARGET_DIR "release")
 endif()
 

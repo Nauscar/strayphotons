@@ -82,7 +82,7 @@ elseif(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
 
 elseif(CMAKE_CXX_COMPILER_ID MATCHES "^(Apple)?Clang$")
 
-    set(CMAKE_CXX_FLAGS                 "-Wall -Werror -Wformat-security -Wno-deprecated-volatile -fPIC") #-fgnuc-version=5
+    set(CMAKE_CXX_FLAGS                 "-Wall -Wformat-security -Wno-deprecated-volatile -fPIC") #-fgnuc-version=5 -Werror
     set(CMAKE_CXX_FLAGS_RELEASE         "-O3")
     set(CMAKE_CXX_FLAGS_RELWITHDEBINFO  "-g3 -ggdb3 -Og")
     set(CMAKE_CXX_FLAGS_DEBUG           "-g3 -ggdb3 -O0")
@@ -142,11 +142,13 @@ endif()
 # Build all external dependencies
 add_subdirectory(ext)
 
-if((CMAKE_SYSTEM_PROCESSOR STREQUAL "aarch64") OR (CMAKE_SYSTEM_PROCESSOR STREQUAL "ARM64"))
+if((CMAKE_SYSTEM_PROCESSOR STREQUAL "aarch64") OR (CMAKE_SYSTEM_PROCESSOR STREQUAL "ARM64") OR (CMAKE_SYSTEM_PROCESSOR STREQUAL "ARM"))
     set(ARM ON)
 else()
     set(ARM OFF)
 endif()
+
+set(VULKAN_HPP_TYPESAFE_CONVERSION ON)
 
 # Tell CMake to convert all relative paths in subdirectories to absolute paths
 cmake_policy(SET CMP0076 NEW)

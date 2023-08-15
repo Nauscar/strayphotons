@@ -9,6 +9,7 @@ add_library(${PROJECT_CORE_LIB} STATIC)
 
 target_include_directories(${PROJECT_CORE_LIB} PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}
+    ${ANDROID_NDK}/sources/third_party/vulkan/src/include # FIXME
 )
 
 target_link_libraries(${PROJECT_CORE_LIB} PUBLIC

@@ -8,7 +8,7 @@
 if(WIN32)
     set(CXXBRIDGE_LIB "${CMAKE_CURRENT_BINARY_DIR}/cargo/${CARGO_TARGET_DIR}/sp_rs.lib")
 else()
-    set(CXXBRIDGE_LIB "${CMAKE_CURRENT_BINARY_DIR}/cargo/${CARGO_TARGET_DIR}/libsp_rs.a")
+    set(CXXBRIDGE_LIB "${CMAKE_CURRENT_BINARY_DIR}/cargo/aarch64-linux-android/${CARGO_TARGET_DIR}/libsp_rs.a") # FIXME
 endif()
 
 # Add rust source files here, and in build.rs
@@ -16,7 +16,7 @@ set(RUST_SOURCE_FILES
     src/api.rs
     src/lib.rs
     src/wasm.rs
-    src/winit.rs
+    src/window.rs
 )
 
 set(CXXBRIDGE_DIR "${CMAKE_CURRENT_BINARY_DIR}/cargo/cxxbridge")
@@ -28,8 +28,8 @@ add_custom_command(COMMENT "Run cxxbridge codegen"
         "${CXXBRIDGE_SP_DIR}/api.rs.h"
         "${CXXBRIDGE_SP_DIR}/wasm.rs.cc"
         "${CXXBRIDGE_SP_DIR}/wasm.rs.h"
-        "${CXXBRIDGE_SP_DIR}/winit.rs.cc"
-        "${CXXBRIDGE_SP_DIR}/winit.rs.h"
+        "${CXXBRIDGE_SP_DIR}/window.rs.cc"
+        "${CXXBRIDGE_SP_DIR}/window.rs.h"
     DEPENDS ${RUST_SOURCE_FILES} build.rs Cargo.toml
     COMMAND ${CMAKE_COMMAND} -E env
         CARGO_TARGET_DIR=${CMAKE_CURRENT_BINARY_DIR}/cargo/
@@ -41,7 +41,7 @@ add_custom_command(COMMENT "Run cxxbridge codegen"
 add_library(sp-rs STATIC
     "${CXXBRIDGE_SP_DIR}/api.rs.cc"
     "${CXXBRIDGE_SP_DIR}/wasm.rs.cc"
-    "${CXXBRIDGE_SP_DIR}/winit.rs.cc"
+    "${CXXBRIDGE_SP_DIR}/window.rs.cc"
 )
 
 target_include_directories(sp-rs
@@ -75,7 +75,7 @@ if(WIN32)
     )
 elseif(UNIX)
     target_link_libraries(sp-rs PRIVATE
-        pthread
+        #pthread
         dl
     )
 endif()

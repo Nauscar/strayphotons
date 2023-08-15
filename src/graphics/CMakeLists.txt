@@ -30,7 +30,7 @@ target_link_libraries(${PROJECT_GRAPHICS_CORE_LIB} PUBLIC
 target_link_libraries(${PROJECT_GRAPHICS_VULKAN_CORE_LIB}
     PUBLIC
         ${PROJECT_GRAPHICS_CORE_LIB}
-        Vulkan::Vulkan
+        #Vulkan::Vulkan
     PRIVATE
         fpng
 )

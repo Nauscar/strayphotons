@@ -217,7 +217,7 @@ namespace sp {
     template<>
     bool EditorContext::AddImGuiElement(const std::string &name, uint32_t &value) {
         return ImGui::DragScalar(name.c_str(), ImGuiDataType_U32, &value, 1.0f, NULL, NULL, "%u");
-    }
+    } // FIXME: 64bit only
     template<>
     bool EditorContext::AddImGuiElement(const std::string &name, size_t &value) {
         return ImGui::DragScalar(name.c_str(), ImGuiDataType_U64, &value, 1.0f, NULL, NULL, "%u");

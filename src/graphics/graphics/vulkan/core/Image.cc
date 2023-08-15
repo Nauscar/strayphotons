@@ -28,13 +28,13 @@ namespace sp::vulkan {
 
         auto result = vmaCreateImage(allocator, &vkImageInfo, &allocInfo, &vkImage, &allocation, nullptr);
         AssertVKSuccess(result, "creating image");
-        image = vkImage;
+        image = vk::Image(vkImage);
     }
 
     Image::~Image() {
         if (allocator != VK_NULL_HANDLE && allocation != VK_NULL_HANDLE) {
             UnmapPersistent();
-            vmaDestroyImage(allocator, image, allocation);
+            vmaDestroyImage(allocator, static_cast<VkImage>(image), allocation);
         }
     }
 

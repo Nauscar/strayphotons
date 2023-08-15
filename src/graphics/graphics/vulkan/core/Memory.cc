@@ -83,7 +83,7 @@ namespace sp::vulkan {
 
         auto result = vmaCreateBuffer(allocator, &vkBufferInfo, &allocInfo, &vkBuffer, &allocation, nullptr);
         AssertVKSuccess(result, "creating buffer");
-        buffer = vkBuffer;
+        buffer = vk::Buffer(vkBuffer);
     }
 
     Buffer::~Buffer() {
@@ -91,7 +91,7 @@ namespace sp::vulkan {
 
         if (allocator != VK_NULL_HANDLE && allocation != VK_NULL_HANDLE) {
             UnmapPersistent();
-            vmaDestroyBuffer(allocator, buffer, allocation);
+            vmaDestroyBuffer(allocator, static_cast<VkBuffer>(buffer), allocation);
         }
     }
 

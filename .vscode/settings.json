@@ -28,8 +28,14 @@
     "C_Cpp.autoAddFileAssociations": false,
     "json.schemas": [
         {
-            "fileMatch": ["assets/scenes/**/*.json"],
+            "fileMatch": [
+                "assets/scenes/**/*.json"
+            ],
             "url": "./docs/generated/scene.schema.json"
         }
+    ],
+    "rust-analyzer.cargo.target": "aarch64-linux-android",
+    "rust-analyzer.linkedProjects": [
+        "rust/sp-rs/Cargo.toml"
     ]
 }

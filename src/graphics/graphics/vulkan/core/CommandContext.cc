@@ -296,7 +296,7 @@ namespace sp::vulkan {
         Assert(set < MAX_BOUND_DESCRIPTOR_SETS, "descriptor set index too high");
         Assert(binding < MAX_BINDINGS_PER_DESCRIPTOR_SET, "binding index too high");
         auto &image = shaderData.sets[set].bindings[binding].image;
-        image.sampler = sampler;
+        image.sampler = static_cast<VkSampler>(sampler);
         SetDescriptorDirty(set);
     }
 
@@ -311,8 +311,8 @@ namespace sp::vulkan {
         bindingDesc.uniqueID = view->GetUniqueID();
 
         auto &image = bindingDesc.image;
-        image.imageView = **view;
-        image.imageLayout = (VkImageLayout)view->Image()->LastLayout();
+        image.imageView = static_cast<VkImageView>(**view);
+        image.imageLayout = static_cast<VkImageLayout>(view->Image()->LastLayout());
         SetDescriptorDirty(set);
 
         auto defaultSampler = view->DefaultSampler();
@@ -338,7 +338,7 @@ namespace sp::vulkan {
         bindingDesc.uniqueID = buffer->GetUniqueID();
 
         auto &bufferBinding = bindingDesc.buffer;
-        bufferBinding.buffer = **buffer;
+        bufferBinding.buffer = static_cast<VkBuffer>(**buffer);
         bufferBinding.offset = offset;
         bufferBinding.range = range == 0 ? buffer->ByteSize() - offset : range;
         bindingDesc.arrayStride = buffer->ArrayStride();
@@ -358,7 +358,7 @@ namespace sp::vulkan {
         bindingDesc.uniqueID = buffer->GetUniqueID();
 
         auto &bufferBinding = bindingDesc.buffer;
-        bufferBinding.buffer = **buffer;
+        bufferBinding.buffer = static_cast<VkBuffer>(**buffer);
         bufferBinding.offset = offset;
         bufferBinding.range = range == 0 ? buffer->ByteSize() - offset : range;
         bindingDesc.arrayStride = buffer->ArrayStride();

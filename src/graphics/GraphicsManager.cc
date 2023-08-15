@@ -76,7 +76,7 @@ namespace sp {
         if (window != nullptr) glfwInputHandler = make_unique<GlfwInputHandler>(game.windowEventQueue, *window);
         #endif
         #if defined(SP_GRAPHICS_SUPPORT_WINIT) && defined(SP_INPUT_SUPPORT_WINIT)
-        winit::WinitContext *winitCtx = vkContext->GetWinitContext();
+        window::WinitContext *winitCtx = vkContext->GetWinitContext();
         if (winitCtx != nullptr) {
             winitInputHandler = make_unique<WinitInputHandler>(*this, game.windowEventQueue, *winitCtx);
         }

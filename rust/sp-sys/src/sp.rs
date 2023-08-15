@@ -5,6 +5,11 @@ use std::process;
 #[derive(Default)]
 pub struct StrayPhotons(u64);
 
+#[cfg(target_os = "android")]
+extern "Rust" {
+    static APP: std::sync::OnceLock<android_activity::AndroidApp>;
+}
+
 impl StrayPhotons {
     pub fn new() -> Self {
         StrayPhotons::default()
@@ -14,7 +19,7 @@ impl StrayPhotons {
         let input = ["sp-rs\0"]; // , "--map\0", "sponza\0"
         let mut input_arr = input.map(|str| str.as_ptr());
 
-        self.0 = game_init(input.len() as i32, input_arr.as_mut_ptr() as *mut *mut i8);
+        self.0 = game_init(input.len() as i32, input_arr.as_mut_ptr() as *mut *mut u8);
         let status = game_start(self.0);
         if status != 0 {
             eprintln!("Stray Photons exited with code: {}", status);
@@ -23,6 +28,11 @@ impl StrayPhotons {
             self.0 = 0;
             process::exit(status);
         }
+    }
+
+    #[cfg(target_os = "android")]
+    pub unsafe fn set_app(app: android_activity::AndroidApp) {
+        APP.get_or_init(|| { app });
     }
 }
 

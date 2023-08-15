@@ -15,15 +15,15 @@ add_subdirectory(physx)
 # These projects require more configuration that is encapsulated their own CMake files
 include(cxxopts.cmake)
 include(fpng.cmake)
-include(glfw.cmake)
-include(glfw-egl.cmake)
+#include(glfw.cmake)
+#include(glfw-egl.cmake) # FIXME: not mobile
 include(glm.cmake)
 include(imgui.cmake)
 include(libnyquist.cmake)
 include(linenoise.cmake)
 include(microtar.cmake)
 include(murmurhash.cmake)
-include(openvr.cmake)
+include(openvr.cmake) # FIXME: 64bit only
 include(picojson.cmake)
 include(resonance-audio.cmake)
 include(SPIRV-Reflect.cmake)

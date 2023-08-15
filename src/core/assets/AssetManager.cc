@@ -48,7 +48,7 @@ namespace sp {
         return assets;
     }
 
-    const char *ASSETS_DIR = "../assets/";
+    const char *ASSETS_DIR = "./assets/";
     const char *ASSETS_TAR = "./assets.spdata";
 
     AssetManager::AssetManager() : RegisteredThread("AssetCleanup", 10.0), workQueue("AssetWorker", 4) {

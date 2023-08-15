@@ -1,9 +1,8 @@
 extern crate sp_sys;
 
-use mobile_entry_point::mobile_entry_point;
 use sp_sys::StrayPhotons;
-use std::error::Error;
 use std::env;
+use std::error::Error;
 
 #[cfg(target_os = "android")]
 fn init_logging() -> Result<(), Box<dyn Error>> {
@@ -41,12 +40,18 @@ fn start() -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-#[mobile_entry_point]
-fn main() {
+fn start_app() {
     match start() {
-        Ok(_) => {},
+        Ok(_) => {}
         Err(err) => {
             eprintln!("Error: {}", err);
-        },
+        }
     }
+}
+
+#[cfg(target_os = "android")]
+#[no_mangle]
+fn android_main(app: android_activity::AndroidApp) {
+    unsafe { StrayPhotons::set_app(app); }
+    start_app();
 }

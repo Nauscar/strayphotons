@@ -20,12 +20,12 @@
 #include <algorithm>
 #include <glm/glm.hpp>
 #include <stdexcept>
-#include <winit.rs.h>
+#include <window.rs.h>
 
 namespace sp {
     WinitInputHandler::WinitInputHandler(GraphicsManager &manager,
         LockFreeEventQueue<ecs::Event> &windowEventQueue,
-        winit::WinitContext &context)
+        window::WinitContext &context)
         : manager(manager), outputEventQueue(windowEventQueue), context(context) {
         GetSceneManager().QueueActionAndBlock(SceneAction::ApplySystemScene,
             "input",

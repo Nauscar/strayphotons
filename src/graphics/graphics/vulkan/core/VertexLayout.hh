@@ -18,7 +18,7 @@ namespace sp::vulkan {
 
         VertexLayout(uint32 binding, uint32 stride, vk::VertexInputRate inputRate = vk::VertexInputRate::eVertex) {
             PushBinding(binding, stride, inputRate);
-        }
+        } // FIXME: 64bit only
 
         VertexLayout(uint32 binding, size_t stride, vk::VertexInputRate inputRate = vk::VertexInputRate::eVertex) {
             PushBinding(binding, (uint32)stride, inputRate);

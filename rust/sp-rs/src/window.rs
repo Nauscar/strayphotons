@@ -1,7 +1,7 @@
+use cxx::CxxString;
 use std::ops::Add;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
-use cxx::CxxString;
 use vulkano::{
     instance::{
         debug::{
@@ -14,14 +14,13 @@ use vulkano::{
     VulkanLibrary,
 };
 use vulkano::{Handle, VulkanObject};
-use ::winit::dpi::PhysicalSize;
-use ::winit::event::{ElementState, Event, MouseScrollDelta, WindowEvent, DeviceEvent};
-use ::winit::keyboard::KeyCode;
-use ::winit::platform::scancode::KeyCodeExtScancode;
-use ::winit::window::{Window, CursorGrabMode};
-use ::winit::{event_loop::EventLoop, window::WindowBuilder};
-use ::winit::window::raw_window_handle::HasRawWindowHandle;
-use raw_window_handle::RawWindowHandle;
+use winit::dpi::PhysicalSize;
+use winit::event::{DeviceEvent, ElementState, Event, MouseScrollDelta, WindowEvent};
+use winit::window::{CursorGrabMode, Window};
+use winit::{
+    event_loop::{EventLoop, EventLoopBuilder},
+    window::WindowBuilder,
+};
 
 pub struct WinitContext {
     pub library: Arc<VulkanLibrary>,
@@ -32,7 +31,7 @@ pub struct WinitContext {
 }
 
 #[cxx::bridge(namespace = "sp")]
-mod winit {
+mod ctx {
     #[repr(i32)]
     #[derive(Debug, Clone, Copy)]
     pub enum KeyCode {
@@ -218,7 +217,7 @@ mod winit {
         unsafe fn MouseScrollCallback(ctx: *mut WinitInputHandler, xOffset: f64, yOffset: f64);
     }
 
-    #[namespace = "sp::winit"]
+    #[namespace = "sp::window"]
     extern "Rust" {
         type WinitContext;
         fn create_context(width: i32, height: i32) -> Box<WinitContext>;
@@ -231,17 +230,39 @@ mod winit {
         fn get_monitor_modes(context: &WinitContext) -> Vec<MonitorMode>;
         fn set_window_title(context: &WinitContext, title: &CxxString);
         fn set_input_mode(context: &WinitContext, mode: InputMode);
-        unsafe fn start_event_loop(context: &mut WinitContext, ctx: *mut WinitInputHandler, max_input_rate: u32);
+        unsafe fn start_event_loop(
+            context: &mut WinitContext,
+            ctx: *mut WinitInputHandler,
+            max_input_rate: u32,
+        );
     }
 }
+
+use crate::window::ctx::*;
 
 unsafe impl Send for WinitContext {}
 unsafe impl Sync for WinitContext {}
 
+#[cfg(target_os = "android")]
+#[no_mangle]
+pub static APP: std::sync::OnceLock<winit::platform::android::activity::AndroidApp> =
+    std::sync::OnceLock::new();
+
 fn create_context(width: i32, height: i32) -> Box<WinitContext> {
     let library: Arc<VulkanLibrary> = VulkanLibrary::new().expect("no local Vulkan library/DLL");
 
-    let event_loop = EventLoop::new().unwrap();
+    #[cfg(not(target_os = "android"))]
+    let event_loop = EventLoopBuilder::new().build().unwrap();
+
+    #[cfg(target_os = "android")]
+    let event_loop = {
+        use winit::platform::android::EventLoopBuilderExtAndroid;
+        EventLoopBuilder::new()
+            .with_android_app(APP.get().unwrap().clone())
+            .build()
+            .unwrap()
+    };
+
     let mut required_extensions: vulkano::instance::InstanceExtensions =
         Surface::required_extensions(&event_loop);
 
@@ -252,8 +273,7 @@ fn create_context(width: i32, height: i32) -> Box<WinitContext> {
     // TODO: Match these settings with C++ DeviceContext.cc
     let debug_create_info = unsafe {
         DebugUtilsMessengerCreateInfo {
-            message_severity: DebugUtilsMessageSeverity::ERROR
-                | DebugUtilsMessageSeverity::WARNING,
+            message_severity: DebugUtilsMessageSeverity::ERROR | DebugUtilsMessageSeverity::WARNING,
             message_type: DebugUtilsMessageType::GENERAL
                 | DebugUtilsMessageType::PERFORMANCE
                 | DebugUtilsMessageType::VALIDATION,
@@ -298,7 +318,7 @@ fn create_context(width: i32, height: i32) -> Box<WinitContext> {
         library.clone(),
         InstanceCreateInfo {
             enabled_extensions: required_extensions,
-            enabled_layers: vec!["VK_LAYER_KHRONOS_validation".to_string()],
+            enabled_layers: vec!["VK_LAYER_KHRONOS_validation".to_string()], // README: https://developer.android.com/ndk/guides/graphics/validation-layer
             debug_utils_messengers: vec![debug_create_info],
             ..Default::default()
         },
@@ -309,10 +329,7 @@ fn create_context(width: i32, height: i32) -> Box<WinitContext> {
         WindowBuilder::new()
             .with_title("STRAY PHOTONS")
             .with_resizable(false)
-            .with_inner_size(PhysicalSize {
-                width,
-                height,
-            })
+            .with_inner_size(PhysicalSize { width, height })
             .build(&event_loop)
             .expect("Failed to create window"),
     );
@@ -361,6 +378,7 @@ fn get_instance_handle(context: &WinitContext) -> u64 {
 
 #[cfg(target_os = "windows")]
 fn get_win32_window_handle(context: &WinitContext) -> u64 {
+    use raw_window_handle::RawWindowHandle;
     if let Some(window) = context.window.as_ref() {
         match window.raw_window_handle() {
             RawWindowHandle::Win32(handle) => handle.hwnd as u64,
@@ -376,18 +394,21 @@ fn get_win32_window_handle(context: &WinitContext) -> u64 {
     0u64
 }
 
-fn get_monitor_modes(context: &WinitContext) -> Vec<winit::MonitorMode> {
+fn get_monitor_modes(context: &WinitContext) -> Vec<MonitorMode> {
     if let Some(window) = context.window.as_ref() {
         if let Some(monitor) = window.current_monitor().as_ref() {
-            monitor.video_modes().map(|mode| {
-                let size = mode.size();
-                winit::MonitorMode {
-                    width: size.width,
-                    height: size.height,
-                    bit_depth: mode.bit_depth(),
-                    refresh_rate_millihertz: mode.refresh_rate_millihertz(),
-                }
-            }).collect()
+            monitor
+                .video_modes()
+                .map(|mode| {
+                    let size = mode.size();
+                    MonitorMode {
+                        width: size.width,
+                        height: size.height,
+                        bit_depth: mode.bit_depth(),
+                        refresh_rate_millihertz: mode.refresh_rate_millihertz(),
+                    }
+                })
+                .collect()
         } else {
             vec![]
         }
@@ -402,33 +423,47 @@ fn set_window_title(context: &WinitContext, title: &CxxString) {
     }
 }
 
-fn set_input_mode(context: &WinitContext, mode: winit::InputMode) {
+fn set_input_mode(context: &WinitContext, mode: InputMode) {
     if let Some(window) = context.window.as_ref() {
         match mode {
-            winit::InputMode::CursorDisabled => {
-                window.set_cursor_grab(CursorGrabMode::Locked)
-                      .or_else(|_e| window.set_cursor_grab(CursorGrabMode::Confined))
-                      .unwrap();
+            InputMode::CursorDisabled => {
+                window
+                    .set_cursor_grab(CursorGrabMode::Locked)
+                    .or_else(|_e| window.set_cursor_grab(CursorGrabMode::Confined))
+                    .unwrap();
                 window.set_cursor_visible(false);
-            },
-            winit::InputMode::CursorNormal => {
+            }
+            InputMode::CursorNormal => {
                 window.set_cursor_grab(CursorGrabMode::None).unwrap();
                 window.set_cursor_visible(true);
-            },
+            }
             _ => (),
         }
     }
 }
 
-fn start_event_loop(context: &mut WinitContext, input_handler: *mut winit::WinitInputHandler, max_input_rate: u32) {
+fn start_event_loop(
+    context: &mut WinitContext,
+    input_handler: *mut WinitInputHandler,
+    max_input_rate: u32,
+) {
     let event_loop = context.event_loop.take().unwrap();
     event_loop
-        .run(|event, _, control_flow| {
+        .run(move |event, _, control_flow| {
             match event {
+                #[cfg(target_os = "android")]
+                Event::Resumed => {
+                    //app.resume(event_loop); // FIXME
+                }
+                #[cfg(target_os = "android")]
+                Event::Suspended => {
+                    log::info!("Suspended, dropping render state...");
+                    //app.render_state = None; // FIXME
+                }
                 Event::DeviceEvent { event, .. } => match event {
                     // TODO: Map unique device_ids to different events/signals
                     DeviceEvent::MouseMotion { delta } => unsafe {
-                        winit::MouseMoveCallback(input_handler, delta.0, delta.1);
+                        MouseMoveCallback(input_handler, delta.0, delta.1);
                     },
                     _ => (),
                 },
@@ -438,70 +473,73 @@ fn start_event_loop(context: &mut WinitContext, input_handler: *mut winit::Winit
                         control_flow.set_exit();
                     }
                     WindowEvent::CursorMoved { position, .. } => unsafe {
-                        winit::MousePositionCallback(input_handler, position.x, position.y);
+                        MousePositionCallback(input_handler, position.x, position.y);
                     },
                     WindowEvent::MouseWheel {
                         delta: MouseScrollDelta::LineDelta(dx, dy),
                         // TODO: Support PixelDelta variant
                         ..
                     } => unsafe {
-                        winit::MouseScrollCallback(input_handler, dx as f64, dy as f64);
+                        MouseScrollCallback(input_handler, dx as f64, dy as f64);
                     },
                     WindowEvent::MouseInput { state, button, .. } => {
-                        let action: winit::InputAction = match state {
-                            ElementState::Released => winit::InputAction::RELEASE,
-                            ElementState::Pressed => winit::InputAction::PRESS,
+                        let action: InputAction = match state {
+                            ElementState::Released => InputAction::RELEASE,
+                            ElementState::Pressed => InputAction::PRESS,
                         };
-                        let btn: winit::MouseButton = match button {
-                            ::winit::event::MouseButton::Left => winit::MouseButton::BUTTON_LEFT,
-                            ::winit::event::MouseButton::Right => winit::MouseButton::BUTTON_RIGHT,
-                            ::winit::event::MouseButton::Middle => {
-                                winit::MouseButton::BUTTON_MIDDLE
-                            }
-                            ::winit::event::MouseButton::Other(3) => winit::MouseButton::BUTTON_4,
-                            ::winit::event::MouseButton::Other(4) => winit::MouseButton::BUTTON_5,
-                            ::winit::event::MouseButton::Other(5) => winit::MouseButton::BUTTON_6,
-                            ::winit::event::MouseButton::Other(6) => winit::MouseButton::BUTTON_7,
-                            ::winit::event::MouseButton::Other(7) => winit::MouseButton::BUTTON_8,
-                            _ => winit::MouseButton::BUTTON_LEFT,
+                        let btn: MouseButton = match button {
+                            winit::event::MouseButton::Left => MouseButton::BUTTON_LEFT,
+                            winit::event::MouseButton::Right => MouseButton::BUTTON_RIGHT,
+                            winit::event::MouseButton::Middle => MouseButton::BUTTON_MIDDLE,
+                            winit::event::MouseButton::Other(3) => MouseButton::BUTTON_4,
+                            winit::event::MouseButton::Other(4) => MouseButton::BUTTON_5,
+                            winit::event::MouseButton::Other(5) => MouseButton::BUTTON_6,
+                            winit::event::MouseButton::Other(6) => MouseButton::BUTTON_7,
+                            winit::event::MouseButton::Other(7) => MouseButton::BUTTON_8,
+                            _ => MouseButton::BUTTON_LEFT,
                         };
                         unsafe {
-                            winit::MouseButtonCallback(input_handler, btn, action);
+                            MouseButtonCallback(input_handler, btn, action);
                         }
                     }
+                    #[cfg(not(any(target_os = "android", target_os = "ios")))]
                     WindowEvent::KeyboardInput { event, .. } => {
-                        let key: winit::KeyCode = into_keycode(event.physical_key);
+                        use winit::platform::scancode::KeyCodeExtScancode;
+                        let key: KeyCode = into_keycode(event.physical_key);
                         let scancode: u32 = event.physical_key.to_scancode().unwrap_or(0u32);
-                        let mut action: winit::InputAction = match event.state {
-                            ElementState::Released => winit::InputAction::RELEASE,
-                            ElementState::Pressed => winit::InputAction::PRESS,
+                        let mut action: InputAction = match event.state {
+                            ElementState::Released => InputAction::RELEASE,
+                            ElementState::Pressed => InputAction::PRESS,
                         };
-                        if event.repeat && action == winit::InputAction::PRESS {
-                            action = winit::InputAction::REPEAT;
+                        if event.repeat && action == InputAction::PRESS {
+                            action = InputAction::REPEAT;
                         }
                         unsafe {
-                            winit::KeyInputCallback(input_handler, key, scancode as i32, action);
+                            KeyInputCallback(input_handler, key, scancode as i32, action);
                         }
 
                         if let Some(text) = event.text {
                             for ch in text.chars() {
                                 unsafe {
-                                    winit::CharInputCallback(input_handler, ch as u32);
+                                    CharInputCallback(input_handler, ch as u32);
                                 }
                             }
                         }
-                    },
+                    }
                     _ => (),
                 },
+                #[cfg(not(any(target_os = "android", target_os = "ios")))]
                 Event::AboutToWait => {
                     let should_close: bool;
                     unsafe {
-                        should_close = !winit::InputFrameCallback(input_handler);
+                        should_close = !InputFrameCallback(input_handler);
                     }
                     if should_close {
                         control_flow.set_exit();
                     } else if max_input_rate > 0 {
-                        control_flow.set_wait_until(Instant::now().add(Duration::from_secs(1) / max_input_rate));
+                        control_flow.set_wait_until(
+                            Instant::now().add(Duration::from_secs(1) / max_input_rate),
+                        );
                     } else {
                         control_flow.set_wait();
                     }
@@ -512,72 +550,73 @@ fn start_event_loop(context: &mut WinitContext, input_handler: *mut winit::Winit
         .unwrap();
 }
 
-fn into_keycode(winit_key: KeyCode) -> winit::KeyCode {
+#[cfg(not(any(target_os = "android", target_os = "ios")))]
+fn into_keycode(winit_key: KeyCode) -> KeyCode {
     match winit_key {
-        KeyCode::Backquote => winit::KeyCode::KEY_BACKTICK,
-        KeyCode::Backslash => winit::KeyCode::KEY_BACKSLASH,
-        KeyCode::BracketLeft => winit::KeyCode::KEY_LEFT_BRACKET,
-        KeyCode::BracketRight => winit::KeyCode::KEY_RIGHT_BRACKET,
-        KeyCode::Comma => winit::KeyCode::KEY_COMMA,
-        KeyCode::Digit0 => winit::KeyCode::KEY_0,
-        KeyCode::Digit1 => winit::KeyCode::KEY_1,
-        KeyCode::Digit2 => winit::KeyCode::KEY_2,
-        KeyCode::Digit3 => winit::KeyCode::KEY_3,
-        KeyCode::Digit4 => winit::KeyCode::KEY_4,
-        KeyCode::Digit5 => winit::KeyCode::KEY_5,
-        KeyCode::Digit6 => winit::KeyCode::KEY_6,
-        KeyCode::Digit7 => winit::KeyCode::KEY_7,
-        KeyCode::Digit8 => winit::KeyCode::KEY_8,
-        KeyCode::Digit9 => winit::KeyCode::KEY_9,
-        KeyCode::Equal => winit::KeyCode::KEY_EQUALS,
+        winit::keyboard::KeyCode::Backquote => KeyCode::KEY_BACKTICK,
+        winit::keyboard::KeyCode::Backslash => KeyCode::KEY_BACKSLASH,
+        winit::keyboard::KeyCode::BracketLeft => Keycode::KEY_LEFT_BRACKET,
+        winit::keyboard::KeyCode::BracketRight => Keycode::KEY_RIGHT_BRACKET,
+        winit::keyboard::KeyCode::Comma => Keycode::KEY_COMMA,
+        winit::keyboard::KeyCode::Digit0 => Keycode::KEY_0,
+        winit::keyboard::KeyCode::Digit1 => Keycode::KEY_1,
+        winit::keyboard::KeyCode::Digit2 => Keycode::KEY_2,
+        winit::keyboard::KeyCode::Digit3 => Keycode::KEY_3,
+        winit::keyboard::KeyCode::Digit4 => Keycode::KEY_4,
+        winit::keyboard::KeyCode::Digit5 => Keycode::KEY_5,
+        winit::keyboard::KeyCode::Digit6 => Keycode::KEY_6,
+        winit::keyboard::KeyCode::Digit7 => Keycode::KEY_7,
+        winit::keyboard::KeyCode::Digit8 => Keycode::KEY_8,
+        winit::keyboard::KeyCode::Digit9 => Keycode::KEY_9,
+        winit::keyboard::KeyCode::Equal => Keycode::KEY_EQUALS,
         // IntlBackslash
         // IntlRo
         // IntlYen
-        KeyCode::KeyA => winit::KeyCode::KEY_A,
-        KeyCode::KeyB => winit::KeyCode::KEY_B,
-        KeyCode::KeyC => winit::KeyCode::KEY_C,
-        KeyCode::KeyD => winit::KeyCode::KEY_D,
-        KeyCode::KeyE => winit::KeyCode::KEY_E,
-        KeyCode::KeyF => winit::KeyCode::KEY_F,
-        KeyCode::KeyG => winit::KeyCode::KEY_G,
-        KeyCode::KeyH => winit::KeyCode::KEY_H,
-        KeyCode::KeyI => winit::KeyCode::KEY_I,
-        KeyCode::KeyJ => winit::KeyCode::KEY_J,
-        KeyCode::KeyK => winit::KeyCode::KEY_K,
-        KeyCode::KeyL => winit::KeyCode::KEY_L,
-        KeyCode::KeyM => winit::KeyCode::KEY_M,
-        KeyCode::KeyN => winit::KeyCode::KEY_N,
-        KeyCode::KeyO => winit::KeyCode::KEY_O,
-        KeyCode::KeyP => winit::KeyCode::KEY_P,
-        KeyCode::KeyQ => winit::KeyCode::KEY_Q,
-        KeyCode::KeyR => winit::KeyCode::KEY_R,
-        KeyCode::KeyS => winit::KeyCode::KEY_S,
-        KeyCode::KeyT => winit::KeyCode::KEY_T,
-        KeyCode::KeyU => winit::KeyCode::KEY_U,
-        KeyCode::KeyV => winit::KeyCode::KEY_V,
-        KeyCode::KeyW => winit::KeyCode::KEY_W,
-        KeyCode::KeyX => winit::KeyCode::KEY_X,
-        KeyCode::KeyY => winit::KeyCode::KEY_Y,
-        KeyCode::KeyZ => winit::KeyCode::KEY_Z,
-        KeyCode::Minus => winit::KeyCode::KEY_MINUS,
-        KeyCode::Period => winit::KeyCode::KEY_PERIOD,
-        KeyCode::Quote => winit::KeyCode::KEY_APOSTROPHE,
-        KeyCode::Semicolon => winit::KeyCode::KEY_SEMICOLON,
-        KeyCode::Slash => winit::KeyCode::KEY_SLASH,
-        KeyCode::AltLeft => winit::KeyCode::KEY_LEFT_ALT,
-        KeyCode::AltRight => winit::KeyCode::KEY_RIGHT_ALT,
-        KeyCode::Backspace => winit::KeyCode::KEY_BACKSPACE,
-        KeyCode::CapsLock => winit::KeyCode::KEY_CAPS_LOCK,
-        KeyCode::ContextMenu => winit::KeyCode::KEY_CONTEXT_MENU,
-        KeyCode::ControlLeft => winit::KeyCode::KEY_LEFT_CONTROL,
-        KeyCode::ControlRight => winit::KeyCode::KEY_RIGHT_CONTROL,
-        KeyCode::Enter => winit::KeyCode::KEY_ENTER,
-        KeyCode::SuperLeft => winit::KeyCode::KEY_LEFT_SUPER,
-        KeyCode::SuperRight => winit::KeyCode::KEY_RIGHT_SUPER,
-        KeyCode::ShiftLeft => winit::KeyCode::KEY_LEFT_SHIFT,
-        KeyCode::ShiftRight => winit::KeyCode::KEY_RIGHT_SHIFT,
-        KeyCode::Space => winit::KeyCode::KEY_SPACE,
-        KeyCode::Tab => winit::KeyCode::KEY_TAB,
+        winit::keyboard::KeyCode::KeyA => Keycode::KEY_A,
+        winit::keyboard::KeyCode::KeyB => Keycode::KEY_B,
+        winit::keyboard::KeyCode::KeyC => Keycode::KEY_C,
+        winit::keyboard::KeyCode::KeyD => Keycode::KEY_D,
+        winit::keyboard::KeyCode::KeyE => Keycode::KEY_E,
+        winit::keyboard::KeyCode::KeyF => Keycode::KEY_F,
+        winit::keyboard::KeyCode::KeyG => Keycode::KEY_G,
+        winit::keyboard::KeyCode::KeyH => Keycode::KEY_H,
+        winit::keyboard::KeyCode::KeyI => Keycode::KEY_I,
+        winit::keyboard::KeyCode::KeyJ => Keycode::KEY_J,
+        winit::keyboard::KeyCode::KeyK => Keycode::KEY_K,
+        winit::keyboard::KeyCode::KeyL => Keycode::KEY_L,
+        winit::keyboard::KeyCode::KeyM => Keycode::KEY_M,
+        winit::keyboard::KeyCode::KeyN => Keycode::KEY_N,
+        winit::keyboard::KeyCode::KeyO => Keycode::KEY_O,
+        winit::keyboard::KeyCode::KeyP => Keycode::KEY_P,
+        winit::keyboard::KeyCode::KeyQ => Keycode::KEY_Q,
+        winit::keyboard::KeyCode::KeyR => Keycode::KEY_R,
+        winit::keyboard::KeyCode::KeyS => Keycode::KEY_S,
+        winit::keyboard::KeyCode::KeyT => Keycode::KEY_T,
+        winit::keyboard::KeyCode::KeyU => Keycode::KEY_U,
+        winit::keyboard::KeyCode::KeyV => Keycode::KEY_V,
+        winit::keyboard::KeyCode::KeyW => Keycode::KEY_W,
+        winit::keyboard::KeyCode::KeyX => Keycode::KEY_X,
+        winit::keyboard::KeyCode::KeyY => Keycode::KEY_Y,
+        winit::keyboard::KeyCode::KeyZ => Keycode::KEY_Z,
+        winit::keyboard::KeyCode::Minus => Keycode::KEY_MINUS,
+        winit::keyboard::KeyCode::Period => Keycode::KEY_PERIOD,
+        winit::keyboard::KeyCode::Quote => Keycode::KEY_APOSTROPHE,
+        winit::keyboard::KeyCode::Semicolon => Keycode::KEY_SEMICOLON,
+        winit::keyboard::KeyCode::Slash => Keycode::KEY_SLASH,
+        winit::keyboard::KeyCode::AltLeft => Keycode::KEY_LEFT_ALT,
+        winit::keyboard::KeyCode::AltRight => Keycode::KEY_RIGHT_ALT,
+        winit::keyboard::KeyCode::Backspace => Keycode::KEY_BACKSPACE,
+        winit::keyboard::KeyCode::CapsLock => Keycode::KEY_CAPS_LOCK,
+        winit::keyboard::KeyCode::ContextMenu => Keycode::KEY_CONTEXT_MENU,
+        winit::keyboard::KeyCode::ControlLeft => Keycode::KEY_LEFT_CONTROL,
+        winit::keyboard::KeyCode::ControlRight => Keycode::KEY_RIGHT_CONTROL,
+        winit::keyboard::KeyCode::Enter => Keycode::KEY_ENTER,
+        winit::keyboard::KeyCode::SuperLeft => Keycode::KEY_LEFT_SUPER,
+        winit::keyboard::KeyCode::SuperRight => Keycode::KEY_RIGHT_SUPER,
+        winit::keyboard::KeyCode::ShiftLeft => Keycode::KEY_LEFT_SHIFT,
+        winit::keyboard::KeyCode::ShiftRight => Keycode::KEY_RIGHT_SHIFT,
+        winit::keyboard::KeyCode::Space => Keycode::KEY_SPACE,
+        winit::keyboard::KeyCode::Tab => Keycode::KEY_TAB,
         // Convert
         // KanaMode
         // Lang1
@@ -585,54 +624,54 @@ fn into_keycode(winit_key: KeyCode) -> winit::KeyCode {
         // Lang3
         // Lang4
         // NonConvert
-        KeyCode::Delete => winit::KeyCode::KEY_DELETE,
-        KeyCode::End => winit::KeyCode::KEY_END,
+        winit::keyboard::KeyCode::Delete => Keycode::KEY_DELETE,
+        winit::keyboard::KeyCode::End => Keycode::KEY_END,
         // Help
-        KeyCode::Home => winit::KeyCode::KEY_HOME,
-        KeyCode::Insert => winit::KeyCode::KEY_INSERT,
-        KeyCode::PageDown => winit::KeyCode::KEY_PAGE_DOWN,
-        KeyCode::PageUp => winit::KeyCode::KEY_PAGE_UP,
-        KeyCode::ArrowDown => winit::KeyCode::KEY_DOWN_ARROW,
-        KeyCode::ArrowLeft => winit::KeyCode::KEY_LEFT_ARROW,
-        KeyCode::ArrowRight => winit::KeyCode::KEY_RIGHT_ARROW,
-        KeyCode::ArrowUp => winit::KeyCode::KEY_UP_ARROW,
-        KeyCode::NumLock => winit::KeyCode::KEY_NUM_LOCK,
-        KeyCode::Numpad0 => winit::KeyCode::KEY_0_NUMPAD,
-        KeyCode::Numpad1 => winit::KeyCode::KEY_1_NUMPAD,
-        KeyCode::Numpad2 => winit::KeyCode::KEY_2_NUMPAD,
-        KeyCode::Numpad3 => winit::KeyCode::KEY_3_NUMPAD,
-        KeyCode::Numpad4 => winit::KeyCode::KEY_4_NUMPAD,
-        KeyCode::Numpad5 => winit::KeyCode::KEY_5_NUMPAD,
-        KeyCode::Numpad6 => winit::KeyCode::KEY_6_NUMPAD,
-        KeyCode::Numpad7 => winit::KeyCode::KEY_7_NUMPAD,
-        KeyCode::Numpad8 => winit::KeyCode::KEY_8_NUMPAD,
-        KeyCode::Numpad9 => winit::KeyCode::KEY_9_NUMPAD,
-        KeyCode::NumpadAdd => winit::KeyCode::KEY_PLUS_NUMPAD,
+        winit::keyboard::KeyCode::Home => Keycode::KEY_HOME,
+        winit::keyboard::KeyCode::Insert => Keycode::KEY_INSERT,
+        winit::keyboard::KeyCode::PageDown => Keycode::KEY_PAGE_DOWN,
+        winit::keyboard::KeyCode::PageUp => Keycode::KEY_PAGE_UP,
+        winit::keyboard::KeyCode::ArrowDown => Keycode::KEY_DOWN_ARROW,
+        winit::keyboard::KeyCode::ArrowLeft => Keycode::KEY_LEFT_ARROW,
+        winit::keyboard::KeyCode::ArrowRight => Keycode::KEY_RIGHT_ARROW,
+        winit::keyboard::KeyCode::ArrowUp => Keycode::KEY_UP_ARROW,
+        winit::keyboard::KeyCode::NumLock => Keycode::KEY_NUM_LOCK,
+        winit::keyboard::KeyCode::Numpad0 => Keycode::KEY_0_NUMPAD,
+        winit::keyboard::KeyCode::Numpad1 => Keycode::KEY_1_NUMPAD,
+        winit::keyboard::KeyCode::Numpad2 => Keycode::KEY_2_NUMPAD,
+        winit::keyboard::KeyCode::Numpad3 => Keycode::KEY_3_NUMPAD,
+        winit::keyboard::KeyCode::Numpad4 => Keycode::KEY_4_NUMPAD,
+        winit::keyboard::KeyCode::Numpad5 => Keycode::KEY_5_NUMPAD,
+        winit::keyboard::KeyCode::Numpad6 => Keycode::KEY_6_NUMPAD,
+        winit::keyboard::KeyCode::Numpad7 => Keycode::KEY_7_NUMPAD,
+        winit::keyboard::KeyCode::Numpad8 => Keycode::KEY_8_NUMPAD,
+        winit::keyboard::KeyCode::Numpad9 => Keycode::KEY_9_NUMPAD,
+        winit::keyboard::KeyCode::NumpadAdd => Keycode::KEY_PLUS_NUMPAD,
         // NumpadBackspace
         // NumpadClear
         // NumpadClearEntry
         // NumpadComma
-        KeyCode::NumpadDecimal => winit::KeyCode::KEY_DECIMAL_NUMPAD,
-        KeyCode::NumpadDivide => winit::KeyCode::KEY_DIVIDE_NUMPAD,
-        KeyCode::NumpadEnter => winit::KeyCode::KEY_ENTER_NUMPAD,
-        KeyCode::NumpadEqual => winit::KeyCode::KEY_EQUALS_NUMPAD,
+        winit::keyboard::KeyCode::NumpadDecimal => Keycode::KEY_DECIMAL_NUMPAD,
+        winit::keyboard::KeyCode::NumpadDivide => Keycode::KEY_DIVIDE_NUMPAD,
+        winit::keyboard::KeyCode::NumpadEnter => Keycode::KEY_ENTER_NUMPAD,
+        winit::keyboard::KeyCode::NumpadEqual => Keycode::KEY_EQUALS_NUMPAD,
         // NumpadHash
         // NumpadMemoryAdd
         // NumpadMemoryClear
         // NumpadMemoryRecall
         // NumpadMemoryStore
         // NumpadMemorySubtract
-        KeyCode::NumpadMultiply => winit::KeyCode::KEY_MULTIPLY_NUMPAD,
+        winit::keyboard::KeyCode::NumpadMultiply => Keycode::KEY_MULTIPLY_NUMPAD,
         // NumpadParenLeft
         // NumpadParenRight
         // NumpadStar
-        KeyCode::NumpadSubtract => winit::KeyCode::KEY_MINUS_NUMPAD,
-        KeyCode::Escape => winit::KeyCode::KEY_ESCAPE,
+        winit::keyboard::KeyCode::NumpadSubtract => Keycode::KEY_MINUS_NUMPAD,
+        winit::keyboard::KeyCode::Escape => Keycode::KEY_ESCAPE,
         // Fn
         // FnLock
-        KeyCode::PrintScreen => winit::KeyCode::KEY_PRINT_SCREEN,
-        KeyCode::ScrollLock => winit::KeyCode::KEY_SCROLL_LOCK,
-        KeyCode::Pause => winit::KeyCode::KEY_PAUSE,
+        winit::keyboard::KeyCode::PrintScreen => Keycode::KEY_PRINT_SCREEN,
+        winit::keyboard::KeyCode::ScrollLock => Keycode::KEY_SCROLL_LOCK,
+        winit::keyboard::KeyCode::Pause => Keycode::KEY_PAUSE,
         // BrowserBack
         // BrowserFavorites
         // BrowserForward
@@ -672,32 +711,32 @@ fn into_keycode(winit_key: KeyCode) -> winit::KeyCode {
         // Undo
         // Hiragana
         // Katakana
-        KeyCode::F1 => winit::KeyCode::KEY_F1,
-        KeyCode::F2 => winit::KeyCode::KEY_F2,
-        KeyCode::F3 => winit::KeyCode::KEY_F3,
-        KeyCode::F4 => winit::KeyCode::KEY_F4,
-        KeyCode::F5 => winit::KeyCode::KEY_F5,
-        KeyCode::F6 => winit::KeyCode::KEY_F6,
-        KeyCode::F7 => winit::KeyCode::KEY_F7,
-        KeyCode::F8 => winit::KeyCode::KEY_F8,
-        KeyCode::F9 => winit::KeyCode::KEY_F9,
-        KeyCode::F10 => winit::KeyCode::KEY_F10,
-        KeyCode::F11 => winit::KeyCode::KEY_F11,
-        KeyCode::F12 => winit::KeyCode::KEY_F12,
-        KeyCode::F13 => winit::KeyCode::KEY_F13,
-        KeyCode::F14 => winit::KeyCode::KEY_F14,
-        KeyCode::F15 => winit::KeyCode::KEY_F15,
-        KeyCode::F16 => winit::KeyCode::KEY_F16,
-        KeyCode::F17 => winit::KeyCode::KEY_F17,
-        KeyCode::F18 => winit::KeyCode::KEY_F18,
-        KeyCode::F19 => winit::KeyCode::KEY_F19,
-        KeyCode::F20 => winit::KeyCode::KEY_F20,
-        KeyCode::F21 => winit::KeyCode::KEY_F21,
-        KeyCode::F22 => winit::KeyCode::KEY_F22,
-        KeyCode::F23 => winit::KeyCode::KEY_F23,
-        KeyCode::F24 => winit::KeyCode::KEY_F24,
-        KeyCode::F25 => winit::KeyCode::KEY_F25,
+        winit::keyboard::KeyCode::F1 => Keycode::KEY_F1,
+        winit::keyboard::KeyCode::F2 => Keycode::KEY_F2,
+        winit::keyboard::KeyCode::F3 => Keycode::KEY_F3,
+        winit::keyboard::KeyCode::F4 => Keycode::KEY_F4,
+        winit::keyboard::KeyCode::F5 => Keycode::KEY_F5,
+        winit::keyboard::KeyCode::F6 => Keycode::KEY_F6,
+        winit::keyboard::KeyCode::F7 => Keycode::KEY_F7,
+        winit::keyboard::KeyCode::F8 => Keycode::KEY_F8,
+        winit::keyboard::KeyCode::F9 => Keycode::KEY_F9,
+        winit::keyboard::KeyCode::F10 => Keycode::KEY_F10,
+        winit::keyboard::KeyCode::F11 => Keycode::KEY_F11,
+        winit::keyboard::KeyCode::F12 => Keycode::KEY_F12,
+        winit::keyboard::KeyCode::F13 => Keycode::KEY_F13,
+        winit::keyboard::KeyCode::F14 => Keycode::KEY_F14,
+        winit::keyboard::KeyCode::F15 => Keycode::KEY_F15,
+        winit::keyboard::KeyCode::F16 => Keycode::KEY_F16,
+        winit::keyboard::KeyCode::F17 => Keycode::KEY_F17,
+        winit::keyboard::KeyCode::F18 => Keycode::KEY_F18,
+        winit::keyboard::KeyCode::F19 => Keycode::KEY_F19,
+        winit::keyboard::KeyCode::F20 => Keycode::KEY_F20,
+        winit::keyboard::KeyCode::F21 => Keycode::KEY_F21,
+        winit::keyboard::KeyCode::F22 => Keycode::KEY_F22,
+        winit::keyboard::KeyCode::F23 => Keycode::KEY_F23,
+        winit::keyboard::KeyCode::F24 => Keycode::KEY_F24,
+        winit::keyboard::KeyCode::F25 => Keycode::KEY_F25,
         // F26-35
-        _ => winit::KeyCode::KEY_INVALID,
+        _ => Keycode::KEY_INVALID,
     }
 }

@@ -25,6 +25,7 @@
 #include <new>
 #include <optional>
 #include <string>
+#include <vulkan/vk_platform.h>
 
 #ifdef SP_GRAPHICS_SUPPORT_GLFW
     #define GLFW_INCLUDE_VULKAN
@@ -35,7 +36,7 @@
     #endif
 #endif
 #ifdef SP_GRAPHICS_SUPPORT_WINIT
-    #include <winit.rs.h>
+    #include <window.rs.h>
 #endif
 
 VULKAN_HPP_DEFAULT_DISPATCH_LOADER_DYNAMIC_STORAGE
@@ -44,7 +45,7 @@ namespace sp::vulkan {
     const uint64_t FENCE_WAIT_TIME = 1e10; // nanoseconds, assume deadlock after this time
     const uint32_t VULKAN_API_VERSION = VK_API_VERSION_1_2;
 
-    static VkBool32 VulkanDebugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
+    static VKAPI_ATTR VkBool32 VulkanDebugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
         VkDebugUtilsMessageTypeFlagsEXT messageType,
         const VkDebugUtilsMessengerCallbackDataEXT *pCallbackData,
         void *pContext) {
@@ -177,16 +178,16 @@ namespace sp::vulkan {
 #endif
 
 #ifdef SP_GRAPHICS_SUPPORT_WINIT
-        winitContext = std::shared_ptr<sp::winit::WinitContext>(
-            sp::winit::create_context(initialSize.x, initialSize.y).into_raw(),
+        winitContext = std::shared_ptr<sp::window::WinitContext>(
+            sp::window::create_context(initialSize.x, initialSize.y).into_raw(),
             [](auto *ptr) {
-                (void)rust::cxxbridge1::Box<sp::winit::WinitContext>::from_raw(ptr);
+                (void)rust::cxxbridge1::Box<sp::window::WinitContext>::from_raw(ptr);
             });
-        instance = (VkInstance)sp::winit::get_instance_handle(*winitContext);
+        instance = (VkInstance)sp::window::get_instance_handle(*winitContext);
         Assert(instance, "winit instance creation failed");
         instanceDestroy.SetFunc([this] {
             Tracef("Destroying rust instance");
-            sp::winit::destroy_instance(*winitContext);
+            sp::window::destroy_instance(*winitContext);
         });
 #endif
 
@@ -207,11 +208,11 @@ namespace sp::vulkan {
         }
 #endif
 #ifdef SP_GRAPHICS_SUPPORT_WINIT
-        surface = (VkSurfaceKHR)sp::winit::get_surface_handle(*winitContext);
+        surface = (VkSurfaceKHR)sp::window::get_surface_handle(*winitContext);
         Assert(surface, "winit window creation failed");
         surfaceDestroy.SetFunc([this] {
             Tracef("Destroying rust surface");
-            sp::winit::destroy_surface(*winitContext);
+            sp::window::destroy_surface(*winitContext);
         });
 #endif
 
@@ -556,7 +557,7 @@ namespace sp::vulkan {
         }
 #endif
 #ifdef SP_GRAPHICS_SUPPORT_WINIT
-        auto modes = sp::winit::get_monitor_modes(*winitContext);
+        auto modes = sp::window::get_monitor_modes(*winitContext);
         monitorModes.reserve(modes.size());
         for (auto &mode : modes) {
             monitorModes.emplace_back(mode.width, mode.height);
@@ -580,7 +581,7 @@ namespace sp::vulkan {
 #endif
 #ifdef SP_GRAPHICS_SUPPORT_WINIT
         swapchain.reset();
-        sp::winit::destroy_window(*winitContext);
+        sp::window::destroy_window(*winitContext);
 #endif
 
 #ifdef TRACY_ENABLE_GRAPHICS
@@ -676,7 +677,7 @@ namespace sp::vulkan {
         if (window) glfwSetWindowTitle(window, title.c_str());
 #endif
 #ifdef SP_GRAPHICS_SUPPORT_WINIT
-        if (winitContext) sp::winit::set_window_title(*winitContext, title);
+        if (winitContext) sp::window::set_window_title(*winitContext, title);
 #endif
     }
 
@@ -768,9 +769,9 @@ namespace sp::vulkan {
             if (lock.Has<ecs::FocusLock>()) {
                 auto layer = lock.Get<ecs::FocusLock>().PrimaryFocus();
                 if (layer == ecs::FocusLayer::Game) {
-                    sp::winit::set_input_mode(*winitContext, sp::InputMode::CursorDisabled);
+                    sp::window::set_input_mode(*winitContext, sp::InputMode::CursorDisabled);
                 } else {
-                    sp::winit::set_input_mode(*winitContext, sp::InputMode::CursorNormal);
+                    sp::window::set_input_mode(*winitContext, sp::InputMode::CursorNormal);
                 }
             }
         }
@@ -1707,7 +1708,7 @@ namespace sp::vulkan {
 #elif defined(SP_GRAPHICS_SUPPORT_GLFW)
         return window ? glfwGetWin32Window(window) : nullptr;
 #elif defined(SP_GRAPHICS_SUPPORT_WINIT)
-        return winitContext ? (void *)sp::winit::get_win32_window_handle(*winitContext) : nullptr;
+        return winitContext ? (void *)sp::window::get_win32_window_handle(*winitContext) : nullptr;
 #else
         return nullptr;
 #endif
