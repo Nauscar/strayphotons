@@ -1,0 +1,17 @@
+[package]
+name = "strayphotons"
+version = "0.1.0"
+authors = ["xthexder", "nauscar"]
+edition = "2021"
+license-file = "../../LICENSE-MPL-2.0"
+
+[dependencies]
+sp-sys = { version = "*", path = "../sp-sys" }
+log = "0.4"
+
+[target.'cfg(target_os = "android")'.dependencies]
+android_logger = "0.13"
+android-activity = { version = "0.5.0-beta.1", features = ["native-activity"] }
+
+[target.'cfg(not(target_os = "android"))'.dependencies]
+simple_logger = "4.2"

@@ -10,12 +10,6 @@ license-file = "../../LICENSE-MPL-2.0"
 default = []
 debug = []
 
-[dependencies]
-libc = "*"
-
-[target.'cfg(target_os = "android")'.dependencies]
-android-activity = { version = "0.5.0-beta.1", features = ["native-activity"] }
-
 [build-dependencies]
 bindgen = "0.66"
 cmake = "0.1"

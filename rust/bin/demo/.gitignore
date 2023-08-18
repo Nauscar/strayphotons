@@ -8,3 +8,16 @@ target/
 
 # macOS
 .DS_Store
+
+# Assets
+assets/audio
+assets/models/**/*.glb
+assets/models/**/*.gltf
+assets/models/**/*.bin
+assets/logos
+assets/textures
+assets/gltf-process
+assets/gltf-process.exe
+assets/shaders
+assets/cache
+assets/util/jsonlint_err.json

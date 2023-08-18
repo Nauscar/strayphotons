@@ -65,7 +65,7 @@ target_link_libraries(sp PUBLIC
     vulkan
 )
 
-target_link_directories(sp PUBLIC "${ANDROID_NDK}/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib/aarch64-linux-android/24/") # FIXME
+target_link_directories(sp PUBLIC "${ANDROID_NDK}/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib/aarch64-linux-android/34/") # FIXME: min sdk version is wrong
 
 if(WIN32)
     target_link_libraries(sp PUBLIC winmm)

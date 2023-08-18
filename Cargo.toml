@@ -1,5 +1,5 @@
 [workspace]
-members = ["rust/sp-sys", "rust/bin/demo"]
+members = ["rust/strayphotons", "rust/sp-sys", "rust/bin/demo"]
 exclude = ["rust/sp-rs"]
 resolver = "2"
 
