@@ -25,6 +25,8 @@ use winit::{
 pub struct WinitContext {
     pub library: Arc<VulkanLibrary>,
     pub instance: Option<Arc<Instance>>,
+    initial_width: i32,
+    initial_height: i32,
     pub window: Option<Arc<Window>>,
     pub surface: Option<Arc<Surface>>,
     pub event_loop: Option<EventLoop<()>>,
@@ -221,6 +223,7 @@ mod ctx {
     extern "Rust" {
         type WinitContext;
         fn create_context(width: i32, height: i32) -> Box<WinitContext>;
+        fn create_view(context: &mut WinitContext);
         fn destroy_window(context: &mut WinitContext);
         fn destroy_surface(context: &mut WinitContext);
         fn destroy_instance(context: &mut WinitContext);
@@ -247,6 +250,25 @@ unsafe impl Sync for WinitContext {}
 #[no_mangle]
 pub static APP: std::sync::OnceLock<winit::platform::android::activity::AndroidApp> =
     std::sync::OnceLock::new();
+
+fn create_view(context: &mut WinitContext) {
+    let window: Arc<Window> = Arc::new(
+        WindowBuilder::new()
+            .with_title("STRAY PHOTONS")
+            .with_resizable(false)
+            .with_inner_size(PhysicalSize {
+                width: context.initial_width,
+                height: context.initial_height,
+            })
+            .build(&context.event_loop.as_ref().unwrap())
+            .expect("Failed to create window"),
+    );
+
+    let surface = Surface::from_window(context.instance.clone().unwrap(), window.clone()).unwrap();
+
+    context.window = Some(window.to_owned());
+    context.surface = Some(surface.to_owned());
+}
 
 fn create_context(width: i32, height: i32) -> Box<WinitContext> {
     let library: Arc<VulkanLibrary> = VulkanLibrary::new().expect("no local Vulkan library/DLL");
@@ -325,23 +347,14 @@ fn create_context(width: i32, height: i32) -> Box<WinitContext> {
     )
     .expect("failed to create instance");
 
-    let window: Arc<Window> = Arc::new(
-        WindowBuilder::new()
-            .with_title("STRAY PHOTONS")
-            .with_resizable(false)
-            .with_inner_size(PhysicalSize { width, height })
-            .build(&event_loop)
-            .expect("Failed to create window"),
-    );
-
-    let surface = Surface::from_window(instance.clone(), window.clone()).unwrap();
-
     println!("Hello, Rust!");
     Box::new(WinitContext {
         library: library.to_owned(),
         instance: Some(instance.to_owned()),
-        window: Some(window.to_owned()),
-        surface: Some(surface.to_owned()),
+        initial_width: width,
+        initial_height: height,
+        window: None,
+        surface: None,
         event_loop: Some(event_loop),
     })
 }
@@ -454,6 +467,7 @@ fn start_event_loop(
                 #[cfg(target_os = "android")]
                 Event::Resumed => {
                     //app.resume(event_loop); // FIXME
+                    create_view(context);
                 }
                 #[cfg(target_os = "android")]
                 Event::Suspended => {
