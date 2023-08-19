@@ -24,7 +24,7 @@
 #include <variant>
 
 struct GLFWwindow;
-namespace sp::window {
+namespace sp::winit {
     struct WinitContext;
 }
 
@@ -209,7 +209,7 @@ namespace sp::vulkan {
             return window;
         }
 
-        window::WinitContext *GetWinitContext() {
+        winit::WinitContext *GetWinitContext() {
             return winitContext.get();
         }
 
@@ -258,7 +258,7 @@ namespace sp::vulkan {
 
         shared_ptr<Shader> CreateShader(const string &name, Hash64 compareHash);
 
-        std::shared_ptr<sp::window::WinitContext> winitContext;
+        std::shared_ptr<sp::winit::WinitContext> winitContext;
 
         std::thread::id mainThread;
         std::thread::id renderThread;

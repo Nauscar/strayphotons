@@ -20,9 +20,9 @@ namespace sp {
     enum InputAction : int;
     enum MouseButton : int;
 
-    namespace window {
+    namespace winit {
         struct WinitContext;
-    } // namespace window
+    } // namespace winit
 
     class GraphicsManager;
 
@@ -30,13 +30,13 @@ namespace sp {
     public:
         WinitInputHandler(GraphicsManager &manager,
             LockFreeEventQueue<ecs::Event> &windowEventQueue,
-            window::WinitContext &context);
+            winit::WinitContext &context);
 
         void StartEventLoop(uint32_t maxInputRate);
 
         GraphicsManager &manager;
         LockFreeEventQueue<ecs::Event> &outputEventQueue;
-        window::WinitContext &context;
+        winit::WinitContext &context;
 
         ecs::EntityRef keyboardEntity = ecs::Name("input", "keyboard");
         ecs::EntityRef mouseEntity = ecs::Name("input", "mouse");

@@ -1,7 +1,10 @@
 use cxx::CxxString;
-use std::ops::Add;
 use std::sync::Arc;
-use std::time::{Duration, Instant};
+#[cfg(not(any(target_os = "android", target_os = "ios")))]
+use std::{
+    ops::Add,
+    time::{Duration, Instant},
+};
 use vulkano::{
     instance::{
         debug::{
@@ -11,15 +14,15 @@ use vulkano::{
         Instance, InstanceCreateInfo,
     },
     swapchain::Surface,
-    VulkanLibrary,
+    Handle, VulkanLibrary, VulkanObject,
 };
-use vulkano::{Handle, VulkanObject};
-use winit::dpi::PhysicalSize;
-use winit::event::{DeviceEvent, ElementState, Event, MouseScrollDelta, WindowEvent};
-use winit::window::{CursorGrabMode, Window};
 use winit::{
+    dpi::{PhysicalPosition, PhysicalSize},
+    event::{DeviceEvent, ElementState, Event, MouseScrollDelta, WindowEvent},
     event_loop::{EventLoop, EventLoopBuilder},
+    monitor::{MonitorHandle, VideoMode},
     window::WindowBuilder,
+    window::{CursorGrabMode, Fullscreen, Window},
 };
 
 #[cxx::bridge(namespace = "sp")]
@@ -191,13 +194,16 @@ mod ctx {
         type MouseButton;
         type WinitInputHandler;
 
+        #[cfg(not(any(target_os = "android", target_os = "ios")))]
         unsafe fn InputFrameCallback(ctx: *mut WinitInputHandler) -> bool;
+        #[cfg(not(any(target_os = "android", target_os = "ios")))]
         unsafe fn KeyInputCallback(
             ctx: *mut WinitInputHandler,
             key: KeyCode,
             scancode: i32,
             action: InputAction,
         );
+        #[cfg(not(any(target_os = "android", target_os = "ios")))]
         unsafe fn CharInputCallback(ctx: *mut WinitInputHandler, ch: u32);
         unsafe fn MouseMoveCallback(ctx: *mut WinitInputHandler, dx: f64, dy: f64);
         unsafe fn MousePositionCallback(ctx: *mut WinitInputHandler, xPos: f64, yPos: f64);
@@ -209,7 +215,7 @@ mod ctx {
         unsafe fn MouseScrollCallback(ctx: *mut WinitInputHandler, xOffset: f64, yOffset: f64);
     }
 
-    #[namespace = "sp::window"]
+    #[namespace = "sp::winit"]
     extern "Rust" {
         type WinitContext;
         type MonitorContext;
@@ -221,7 +227,7 @@ mod ctx {
 
         fn get_surface_handle(context: &WinitContext) -> u64;
         fn get_instance_handle(context: &WinitContext) -> u64;
-        fn get_win32_window_handle(context: &WinitContext) -> u64;
+        fn get_win32_window_handle(_context: &WinitContext) -> u64;
 
         fn get_monitor_modes(context: &WinitContext) -> Vec<MonitorMode>;
         fn get_active_monitor(context: &WinitContext) -> Box<MonitorContext>;
@@ -251,7 +257,7 @@ mod ctx {
         unsafe fn start_event_loop(
             context: &mut WinitContext,
             ctx: *mut WinitInputHandler,
-            max_input_rate: u32,
+            _max_input_rate: u32,
         );
     }
 }
@@ -419,9 +425,9 @@ fn get_instance_handle(context: &WinitContext) -> u64 {
 }
 
 #[cfg(target_os = "windows")]
-fn get_win32_window_handle(context: &WinitContext) -> u64 {
+fn get_win32_window_handle(_context: &WinitContext) -> u64 {
     use raw_window_handle::RawWindowHandle;
-    if let Some(window) = context.window.as_ref() {
+    if let Some(window) = _context.window.as_ref() {
         match window.raw_window_handle() {
             RawWindowHandle::Win32(handle) => handle.hwnd as u64,
             _ => 0u64,
@@ -432,7 +438,7 @@ fn get_win32_window_handle(context: &WinitContext) -> u64 {
 }
 
 #[cfg(not(target_os = "windows"))]
-fn get_win32_window_handle(context: &WinitContext) -> u64 {
+fn get_win32_window_handle(_context: &WinitContext) -> u64 {
     0u64
 }
 
@@ -556,7 +562,7 @@ fn set_window_inner_size(context: &WinitContext, width: u32, height: u32) {
     }
 }
 
-fn set_input_mode(context: &WinitContext, mode: winit::InputMode) {
+fn set_input_mode(context: &WinitContext, mode: InputMode) {
     if let Some(window) = context.window.as_ref() {
         match mode {
             InputMode::CursorDisabled => {
@@ -578,7 +584,7 @@ fn set_input_mode(context: &WinitContext, mode: winit::InputMode) {
 fn start_event_loop(
     context: &mut WinitContext,
     input_handler: *mut WinitInputHandler,
-    max_input_rate: u32,
+    _max_input_rate: u32,
 ) {
     let event_loop = context.event_loop.take().unwrap();
     event_loop
@@ -670,9 +676,9 @@ fn start_event_loop(
                     }
                     if should_close {
                         control_flow.set_exit();
-                    } else if max_input_rate > 0 {
+                    } else if _max_input_rate > 0 {
                         control_flow.set_wait_until(
-                            Instant::now().add(Duration::from_secs(1) / max_input_rate),
+                            Instant::now().add(Duration::from_secs(1) / _max_input_rate),
                         );
                     } else {
                         control_flow.set_wait();

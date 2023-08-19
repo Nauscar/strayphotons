@@ -25,7 +25,7 @@
 namespace sp {
     WinitInputHandler::WinitInputHandler(GraphicsManager &manager,
         LockFreeEventQueue<ecs::Event> &windowEventQueue,
-        window::WinitContext &context)
+        winit::WinitContext &context)
         : manager(manager), outputEventQueue(windowEventQueue), context(context) {
         GetSceneManager().QueueActionAndBlock(SceneAction::ApplySystemScene,
             "input",
