@@ -3,16 +3,16 @@ rustflags = ["-Ctarget-feature=+crt-static"]
 
 [target.aarch64-linux-android]
 ar = '../../Android/Sdk/ndk/26.0.10404224/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android-ar'
-linker = '../../Android/Sdk/ndk/26.0.10404224/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android34-clang'
+linker = '../../Android/Sdk/ndk/26.0.10404224/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android29-clang'
 
 [target.armv7-linux-androideabi]
 ar = '../../Android/Sdk/ndk/26.0.10404224/toolchains/llvm/prebuilt/linux-x86_64/bin/arm-linux-androideabi-ar'
-linker = '../../Android/Sdk/ndk/26.0.10404224/toolchains/llvm/prebuilt/linux-x86_64/bin/armv7a-linux-androideabi34-clang'
+linker = '../../Android/Sdk/ndk/26.0.10404224/toolchains/llvm/prebuilt/linux-x86_64/bin/armv7a-linux-androideabi29-clang'
 
 [target.i686-linux-android]
 ar = '../../Android/Sdk/ndk/26.0.10404224/toolchains/llvm/prebuilt/linux-x86_64/bin/i686-linux-android-ar'
-linker = '../../Android/Sdk/ndk/26.0.10404224/toolchains/llvm/prebuilt/linux-x86_64/bin/i686-linux-android34-clang'
+linker = '../../Android/Sdk/ndk/26.0.10404224/toolchains/llvm/prebuilt/linux-x86_64/bin/i686-linux-android29-clang'
 
 [target.x86_64-linux-android]
 ar = '../../Android/Sdk/ndk/26.0.10404224/toolchains/llvm/prebuilt/linux-x86_64/bin/x86_64-linux-android-ar'
-linker = '../../Android/Sdk/ndk/26.0.10404224/toolchains/llvm/prebuilt/linux-x86_64/bin/x86_64-linux-android34-clang'
+linker = '../../Android/Sdk/ndk/26.0.10404224/toolchains/llvm/prebuilt/linux-x86_64/bin/x86_64-linux-android29-clang'
