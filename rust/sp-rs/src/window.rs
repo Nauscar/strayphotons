@@ -19,7 +19,7 @@ use vulkano::{
 use winit::{
     dpi::{PhysicalPosition, PhysicalSize},
     event::{DeviceEvent, ElementState, Event, MouseScrollDelta, WindowEvent},
-    event_loop::{EventLoop, EventLoopBuilder},
+    event_loop::{EventLoop, EventLoopBuilder, EventLoopWindowTarget},
     monitor::{MonitorHandle, VideoMode},
     window::WindowBuilder,
     window::{CursorGrabMode, Fullscreen, Window},
@@ -220,7 +220,6 @@ mod ctx {
         type WinitContext;
         type MonitorContext;
         fn create_context(width: i32, height: i32) -> Box<WinitContext>;
-        fn create_view(context: &mut WinitContext, event_loop_window_target: & EventLoopWindowTarget);
         fn destroy_window(context: &mut WinitContext);
         fn destroy_surface(context: &mut WinitContext);
         fn destroy_instance(context: &mut WinitContext);
@@ -286,7 +285,7 @@ pub struct MonitorContext {
 pub static APP: std::sync::OnceLock<winit::platform::android::activity::AndroidApp> =
     std::sync::OnceLock::new();
 
-fn create_view(context: &mut WinitContext, event_loop_window_target: & EventLoopWindowTarget) {
+fn create_view(context: &mut WinitContext, event_loop_window_target: & EventLoopWindowTarget<()>) {
     let window: Arc<Window> = Arc::new(
         WindowBuilder::new()
             .with_title("STRAY PHOTONS")
