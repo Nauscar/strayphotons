@@ -39,6 +39,7 @@ namespace sp {
     }
 
     void WinitInputHandler::StartEventLoop(uint32_t maxInputRate) {
+        Logf("Starting event loop!");
         start_event_loop(context, this, maxInputRate);
     }
 

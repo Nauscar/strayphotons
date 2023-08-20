@@ -115,6 +115,8 @@ namespace sp {
         auto *vkContext = dynamic_cast<vulkan::DeviceContext *>(context.get());
         Assert(vkContext, "Invalid vulkan context on init");
 
+        vkContext->InitThread();
+
         game.debugGui->Attach(make_shared<vulkan::ProfilerGui>(*vkContext->GetPerfTimer()));
 
         renderer = make_unique<vulkan::Renderer>(*vkContext);

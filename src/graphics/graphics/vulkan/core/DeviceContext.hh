@@ -249,6 +249,8 @@ namespace sp::vulkan {
 
         void SetTitle(std::string title) override;
 
+        void InitThread();
+
     private:
         void CreateSwapchain();
         void CreateTestPipeline();
@@ -273,6 +275,7 @@ namespace sp::vulkan {
         vk::UniqueDevice device;
         unique_ptr<VmaAllocator_T, void (*)(VmaAllocator)> allocator;
         unique_ptr<PerfTimer> perfTimer;
+        bool enableSwapchain_;
 
 #ifdef TRACY_ENABLE_GRAPHICS
         struct {

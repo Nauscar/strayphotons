@@ -87,7 +87,8 @@ namespace sp::vulkan {
 
     DeviceContext::DeviceContext(bool enableValidationLayers, bool enableSwapchain)
         : mainThread(std::this_thread::get_id()), allocator(nullptr, DeleteAllocator), threadContexts(32),
-          frameBeginQueue("BeginFrame", 0), frameEndQueue("EndFrame", 0), allocatorQueue("GPUAllocator") {
+          frameBeginQueue("BeginFrame", 0), frameEndQueue("EndFrame", 0), allocatorQueue("GPUAllocator"),
+          enableSwapchain_(enableSwapchain) {
         ZoneScoped;
 
 #ifdef SP_GRAPHICS_SUPPORT_GLFW
@@ -123,14 +124,15 @@ namespace sp::vulkan {
             extensions.push_back(name.data());
         }
         extensions.emplace_back(VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME);
-        extensions.emplace_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
+        // extensions.emplace_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
 
         if (enableValidationLayers) {
-            Logf("Running with Vulkan validation layer");
-            layers.emplace_back("VK_LAYER_KHRONOS_validation");
+            Logf("LMAO skipping Vulkan validation");
+            // Logf("Running with Vulkan validation layer");
+            // layers.emplace_back("VK_LAYER_KHRONOS_validation");
         }
 
-        vk::DebugUtilsMessengerCreateInfoEXT debugInfo;
+        /* vk::DebugUtilsMessengerCreateInfoEXT debugInfo;
         debugInfo.messageType = vk::DebugUtilsMessageTypeFlagBitsEXT::eGeneral |
                                 vk::DebugUtilsMessageTypeFlagBitsEXT::ePerformance |
                                 vk::DebugUtilsMessageTypeFlagBitsEXT::eValidation;
@@ -141,7 +143,7 @@ namespace sp::vulkan {
         debugInfo.messageSeverity |= vk::DebugUtilsMessageSeverityFlagBitsEXT::eInfo;
 #endif
         debugInfo.pfnUserCallback = &VulkanDebugCallback;
-        debugInfo.pUserData = this;
+        debugInfo.pUserData = this; */
 
         auto initialSize = CVarWindowSize.Get();
 #ifdef SP_GRAPHICS_SUPPORT_GLFW
@@ -151,7 +153,7 @@ namespace sp::vulkan {
             extensions.emplace_back(requiredExtensions[i]);
         }
 
-        if (enableSwapchain) {
+        if (enableSwapchain_) {
             // Create window and surface
             window = glfwCreateWindow(initialSize.x, initialSize.y, "STRAY PHOTONS", nullptr, nullptr);
             Assert(window, "glfw window creation failed");
@@ -192,10 +194,55 @@ namespace sp::vulkan {
 #endif
 
         VULKAN_HPP_DEFAULT_DISPATCHER.init(instance);
-        debugMessenger = instance.createDebugUtilsMessengerEXTUnique(debugInfo);
+        // debugMessenger = instance.createDebugUtilsMessengerEXTUnique(debugInfo);
+    }
+
+    DeviceContext::~DeviceContext() {
+        if (device) device->waitIdle();
+        Tracef("Destroying DeviceContext");
+#ifdef SP_GRAPHICS_SUPPORT_GLFW
+        if (window) {
+            glfwDestroyWindow(window);
+        }
+#endif
+#ifdef SP_GRAPHICS_SUPPORT_WINIT
+        swapchain.reset();
+        sp::winit::destroy_window(*winitContext);
+#endif
+
+#ifdef TRACY_ENABLE_GRAPHICS
+        for (auto ctx : tracing.tracyContexts)
+            if (ctx) TracyVkDestroy(ctx);
+#endif
 
 #ifdef SP_GRAPHICS_SUPPORT_GLFW
-        if (enableSwapchain) {
+        glfwTerminate();
+#endif
+    }
+
+    void DeviceContext::InitThread() {
+        std::vector<const char *> extensions, layers;
+        bool hasMemoryRequirements2Ext = false, hasDedicatedAllocationExt = false;
+
+        auto availableExtensions = vk::enumerateInstanceExtensionProperties();
+        // Debugf("Available Vulkan extensions: %u", availableExtensions.size());
+        for (auto &ext : availableExtensions) {
+            string_view name(ext.extensionName.data());
+            // Debugf("\t%s", name);
+
+            if (name == VK_KHR_GET_MEMORY_REQUIREMENTS_2_EXTENSION_NAME) {
+                hasMemoryRequirements2Ext = true;
+            } else if (name == VK_KHR_DEDICATED_ALLOCATION_EXTENSION_NAME) {
+                hasDedicatedAllocationExt = true;
+            } else {
+                continue;
+            }
+            extensions.push_back(name.data());
+        }
+        extensions.emplace_back(VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME);
+
+#ifdef SP_GRAPHICS_SUPPORT_GLFW
+        if (enableSwapchain_) {
             auto result = glfwCreateWindowSurface(instance, window, nullptr, (VkSurfaceKHR *)&surface);
             AssertVKSuccess(result, "creating window surface");
             Assert(surface, "gkfw window surface creation failed");
@@ -208,7 +255,16 @@ namespace sp::vulkan {
         }
 #endif
 #ifdef SP_GRAPHICS_SUPPORT_WINIT
-        surface = (VkSurfaceKHR)sp::winit::get_surface_handle(*winitContext);
+        do {
+            surface = (VkSurfaceKHR)sp::winit::get_surface_handle(*winitContext);
+
+            if (!surface) {
+                Logf("Surface not ready yet: waiting for 1000ms");
+                using namespace std::chrono_literals;
+                std::this_thread::sleep_for(1000ms);
+            }
+        } while (!surface);
+
         Assert(surface, "winit window creation failed");
         surfaceDestroy.SetFunc([this] {
             Tracef("Destroying rust surface");
@@ -257,7 +313,7 @@ namespace sp::vulkan {
                 vk::QueueFlagBits::eGraphics | vk::QueueFlagBits::eCompute,
                 {},
                 1.0f,
-                enableSwapchain))
+                enableSwapchain_))
             Abort("could not find a supported graphics queue family");
 
         if (!findQueue(QUEUE_TYPE_COMPUTE, vk::QueueFlagBits::eCompute, {}, 0.5f)) {
@@ -301,7 +357,7 @@ namespace sp::vulkan {
             VK_EXT_SHADER_VIEWPORT_INDEX_LAYER_EXTENSION_NAME,
         };
 
-        if (enableSwapchain) {
+        if (enableSwapchain_) {
             enabledDeviceExtensions.push_back(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
         }
 
@@ -568,30 +624,7 @@ namespace sp::vulkan {
         });
         monitorModes.erase(std::unique(monitorModes.begin(), monitorModes.end()), monitorModes.end());
 
-        if (enableSwapchain) CreateSwapchain();
-    }
-
-    DeviceContext::~DeviceContext() {
-        if (device) device->waitIdle();
-        Tracef("Destroying DeviceContext");
-#ifdef SP_GRAPHICS_SUPPORT_GLFW
-        if (window) {
-            glfwDestroyWindow(window);
-        }
-#endif
-#ifdef SP_GRAPHICS_SUPPORT_WINIT
-        swapchain.reset();
-        sp::winit::destroy_window(*winitContext);
-#endif
-
-#ifdef TRACY_ENABLE_GRAPHICS
-        for (auto ctx : tracing.tracyContexts)
-            if (ctx) TracyVkDestroy(ctx);
-#endif
-
-#ifdef SP_GRAPHICS_SUPPORT_GLFW
-        glfwTerminate();
-#endif
+        if (enableSwapchain_) CreateSwapchain();
     }
 
     // Releases old swapchain after creating a new one

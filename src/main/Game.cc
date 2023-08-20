@@ -108,11 +108,18 @@ namespace sp {
         }
 #endif
 
+        Logf("Got past GFX thread start");
+
 #ifdef SP_XR_SUPPORT
         if (options.count("no-vr") == 0) xr.LoadXrSystem();
 #endif
 
+        Logf("Got past XR init");
+
         auto &scenes = GetSceneManager();
+
+        Logf("Got past GetSceneManager");
+
 #ifdef SP_GRAPHICS_SUPPORT
         if (options.count("headless")) {
 #endif
@@ -120,11 +127,19 @@ namespace sp {
 #ifdef SP_GRAPHICS_SUPPORT
         }
 #endif
+
+        Logf("Got past DisableGraphicsPreload");
+
 #ifndef SP_PHYSICS_SUPPORT_PHYSX
         scenes.DisablePhysicsPreload();
 #endif
+
+        Logf("Got past DisablePhysicsPreload");
+
         scenes.QueueAction(SceneAction::ReloadPlayer);
         scenes.QueueAction(SceneAction::ReloadBindings);
+
+        Logf("Got past DisablePhysicsPreload");
 
         if (startupScript != nullptr) {
             funcs.Register<int>("sleep", "Pause script execution for N milliseconds", [](int ms) {
@@ -164,13 +179,23 @@ namespace sp {
             }
         }
 
+        Logf("Got past startup script stuff");
+
         GetConsoleManager().StartThread(startupScript);
+
+        Logf("Got past console manager thread started");
+
         logic.StartThread();
 
+        Logf("Got past logic startThread");
+
 #ifdef SP_INPUT_SUPPORT_WINIT
+        Logf("GetWinitInputHandler");
         auto *inputHandler = graphics.GetWinitInputHandler();
         Assertf(inputHandler != nullptr, "WinitInputHandler is null");
+        Logf("StartEventLoop");
         inputHandler->StartEventLoop((uint32_t)MaxInputPollRate);
+        Logf("StopThread");
         graphics.StopThread();
 #elif defined(SP_GRAPHICS_SUPPORT)
         auto frameEnd = chrono_clock::now();

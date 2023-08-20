@@ -325,7 +325,7 @@ fn create_context(width: i32, height: i32) -> Box<WinitContext> {
 
     required_extensions.khr_surface = true;
     required_extensions.khr_get_physical_device_properties2 = true;
-    required_extensions.ext_debug_utils = true;
+    // required_extensions.ext_debug_utils = true;
 
     // TODO: Match these settings with C++ DeviceContext.cc
     let debug_create_info = unsafe {
@@ -375,8 +375,8 @@ fn create_context(width: i32, height: i32) -> Box<WinitContext> {
         library.clone(),
         InstanceCreateInfo {
             enabled_extensions: required_extensions,
-            enabled_layers: vec!["VK_LAYER_KHRONOS_validation".to_string()], // README: https://developer.android.com/ndk/guides/graphics/validation-layer
-            debug_utils_messengers: vec![debug_create_info],
+            enabled_layers: vec![], /* vec!["VK_LAYER_KHRONOS_validation".to_string()], */ // README: https://developer.android.com/ndk/guides/graphics/validation-layer
+            debug_utils_messengers: vec![], /* vec![debug_create_info], */
             ..Default::default()
         },
     )
