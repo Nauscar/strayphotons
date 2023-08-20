@@ -220,7 +220,7 @@ mod ctx {
         type WinitContext;
         type MonitorContext;
         fn create_context(width: i32, height: i32) -> Box<WinitContext>;
-        fn create_view(context: &mut WinitContext);
+        fn create_view(context: &mut WinitContext, event_loop_window_target: & EventLoopWindowTarget);
         fn destroy_window(context: &mut WinitContext);
         fn destroy_surface(context: &mut WinitContext);
         fn destroy_instance(context: &mut WinitContext);
@@ -286,7 +286,7 @@ pub struct MonitorContext {
 pub static APP: std::sync::OnceLock<winit::platform::android::activity::AndroidApp> =
     std::sync::OnceLock::new();
 
-fn create_view(context: &mut WinitContext) {
+fn create_view(context: &mut WinitContext, event_loop_window_target: & EventLoopWindowTarget) {
     let window: Arc<Window> = Arc::new(
         WindowBuilder::new()
             .with_title("STRAY PHOTONS")
@@ -295,7 +295,7 @@ fn create_view(context: &mut WinitContext) {
                 width: context.initial_width,
                 height: context.initial_height,
             })
-            .build(&context.event_loop.as_ref().unwrap())
+            .build(event_loop_window_target)
             .expect("Failed to create window"),
     );
 
@@ -588,12 +588,12 @@ fn start_event_loop(
 ) {
     let event_loop = context.event_loop.take().unwrap();
     event_loop
-        .run(move |event, _, control_flow| {
+        .run(move |event, event_loop_window_target, control_flow| {
             match event {
                 #[cfg(target_os = "android")]
                 Event::Resumed => {
                     //app.resume(event_loop); // FIXME
-                    create_view(context);
+                    create_view(context, event_loop_window_target);
                 }
                 #[cfg(target_os = "android")]
                 Event::Suspended => {
