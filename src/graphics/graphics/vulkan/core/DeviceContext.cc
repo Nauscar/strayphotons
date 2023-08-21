@@ -335,8 +335,8 @@ namespace sp::vulkan {
         }
 
         // currently we have code that assumes the transfer queue family is different from the other queues
-        Assert(queueFamilyIndex[QUEUE_TYPE_TRANSFER] != queueFamilyIndex[QUEUE_TYPE_GRAPHICS],
-            "transfer queue family overlaps graphics queue");
+        // Assert(queueFamilyIndex[QUEUE_TYPE_TRANSFER] != queueFamilyIndex[QUEUE_TYPE_GRAPHICS],
+        //    "transfer queue family overlaps graphics queue");
 
         std::vector<vk::DeviceQueueCreateInfo> queueInfos;
         for (uint32 i = 0; i < queueFamilies.size(); i++) {
@@ -351,10 +351,10 @@ namespace sp::vulkan {
 
         vector<const char *> enabledDeviceExtensions = {
             VK_KHR_MULTIVIEW_EXTENSION_NAME,
-            VK_EXT_MEMORY_BUDGET_EXTENSION_NAME,
-            VK_KHR_SHADER_NON_SEMANTIC_INFO_EXTENSION_NAME,
-            VK_EXT_CALIBRATED_TIMESTAMPS_EXTENSION_NAME,
-            VK_EXT_SHADER_VIEWPORT_INDEX_LAYER_EXTENSION_NAME,
+            // VK_EXT_MEMORY_BUDGET_EXTENSION_NAME, // FIXME
+            // VK_KHR_SHADER_NON_SEMANTIC_INFO_EXTENSION_NAME,
+            // VK_EXT_CALIBRATED_TIMESTAMPS_EXTENSION_NAME,
+            // VK_EXT_SHADER_VIEWPORT_INDEX_LAYER_EXTENSION_NAME,
         };
 
         if (enableSwapchain_) {
@@ -386,42 +386,42 @@ namespace sp::vulkan {
         Assert(availableDeviceFeatures.fillModeNonSolid, "device must support fillModeNonSolid");
         Assert(availableDeviceFeatures.samplerAnisotropy, "device must support samplerAnisotropy");
         Assert(availableDeviceFeatures.multiDrawIndirect, "device must support multiDrawIndirect");
-        Assert(availableDeviceFeatures.multiViewport, "device must support multiViewport");
+        // Assert(availableDeviceFeatures.multiViewport, "device must support multiViewport"); // FIXME: Android
         Assert(availableDeviceFeatures.drawIndirectFirstInstance, "device must support drawIndirectFirstInstance");
         Assert(availableDeviceFeatures.shaderInt16, "device must support shaderInt16");
         Assert(availableDeviceFeatures.fragmentStoresAndAtomics, "device must support fragmentStoresAndAtomics");
-        Assert(availableDeviceFeatures.wideLines, "device must support wideLines");
+        // Assert(availableDeviceFeatures.wideLines, "device must support wideLines");
         Assert(availableVulkan11Features.multiview, "device must support multiview");
         Assert(availableVulkan11Features.shaderDrawParameters, "device must support shaderDrawParameters");
-        Assert(availableVulkan11Features.storageBuffer16BitAccess, "device must support storageBuffer16BitAccess");
-        Assert(availableVulkan11Features.uniformAndStorageBuffer16BitAccess,
-            "device must support uniformAndStorageBuffer16BitAccess");
-        Assert(availableVulkan12Features.shaderOutputViewportIndex, "device must support shaderOutputViewportIndex");
-        Assert(availableVulkan12Features.shaderOutputLayer, "device must support shaderOutputLayer");
+        // Assert(availableVulkan11Features.storageBuffer16BitAccess, "device must support storageBuffer16BitAccess");
+        // Assert(availableVulkan11Features.uniformAndStorageBuffer16BitAccess,
+        // "device must support uniformAndStorageBuffer16BitAccess");
+        // Assert(availableVulkan12Features.shaderOutputViewportIndex, "device must support shaderOutputViewportIndex");
+        // Assert(availableVulkan12Features.shaderOutputLayer, "device must support shaderOutputLayer");
         Assert(availableVulkan12Features.drawIndirectCount, "device must support drawIndirectCount");
-        Assert(availableVulkan12Features.runtimeDescriptorArray, "device must support runtimeDescriptorArray");
-        Assert(availableVulkan12Features.descriptorBindingPartiallyBound,
-            "device must support descriptorBindingPartiallyBound");
-        Assert(availableVulkan12Features.descriptorBindingVariableDescriptorCount,
-            "device must support descriptorBindingVariableDescriptorCount");
-        Assert(availableVulkan12Features.shaderSampledImageArrayNonUniformIndexing,
-            "device must support shaderSampledImageArrayNonUniformIndexing");
-        Assert(availableVulkan12Features.descriptorBindingUpdateUnusedWhilePending,
-            "device must support descriptorBindingUpdateUnusedWhilePending");
+        // Assert(availableVulkan12Features.runtimeDescriptorArray, "device must support runtimeDescriptorArray");
+        // Assert(availableVulkan12Features.descriptorBindingPartiallyBound,
+        // "device must support descriptorBindingPartiallyBound");
+        // Assert(availableVulkan12Features.descriptorBindingVariableDescriptorCount,
+        // "device must support descriptorBindingVariableDescriptorCount");
+        // Assert(availableVulkan12Features.shaderSampledImageArrayNonUniformIndexing,
+        // "device must support shaderSampledImageArrayNonUniformIndexing");
+        // Assert(availableVulkan12Features.descriptorBindingUpdateUnusedWhilePending,
+        // "device must support descriptorBindingUpdateUnusedWhilePending");
 
         vk::PhysicalDeviceVulkan12Features enabledVulkan12Features;
-        enabledVulkan12Features.shaderOutputViewportIndex = true;
-        enabledVulkan12Features.shaderOutputLayer = true;
+        // enabledVulkan12Features.shaderOutputViewportIndex = true;
+        //  enabledVulkan12Features.shaderOutputLayer = true;
         enabledVulkan12Features.drawIndirectCount = true;
-        enabledVulkan12Features.runtimeDescriptorArray = true;
-        enabledVulkan12Features.descriptorBindingPartiallyBound = true;
-        enabledVulkan12Features.descriptorBindingVariableDescriptorCount = true;
-        enabledVulkan12Features.shaderSampledImageArrayNonUniformIndexing = true;
-        enabledVulkan12Features.descriptorBindingUpdateUnusedWhilePending = true;
+        // enabledVulkan12Features.runtimeDescriptorArray = true;
+        // enabledVulkan12Features.descriptorBindingPartiallyBound = true;
+        // enabledVulkan12Features.descriptorBindingVariableDescriptorCount = true;
+        // enabledVulkan12Features.shaderSampledImageArrayNonUniformIndexing = true;
+        // enabledVulkan12Features.descriptorBindingUpdateUnusedWhilePending = true;
 
         vk::PhysicalDeviceVulkan11Features enabledVulkan11Features;
-        enabledVulkan11Features.storageBuffer16BitAccess = true;
-        enabledVulkan11Features.uniformAndStorageBuffer16BitAccess = true;
+        // enabledVulkan11Features.storageBuffer16BitAccess = true;
+        // enabledVulkan11Features.uniformAndStorageBuffer16BitAccess = true;
         enabledVulkan11Features.multiview = true;
         enabledVulkan11Features.shaderDrawParameters = true;
         enabledVulkan11Features.pNext = &enabledVulkan12Features;
@@ -434,10 +434,10 @@ namespace sp::vulkan {
         enabledDeviceFeatures.samplerAnisotropy = true;
         enabledDeviceFeatures.multiDrawIndirect = true;
         enabledDeviceFeatures.drawIndirectFirstInstance = true;
-        enabledDeviceFeatures.multiViewport = true;
+        // enabledDeviceFeatures.multiViewport = true;
         enabledDeviceFeatures.shaderInt16 = true;
         enabledDeviceFeatures.fragmentStoresAndAtomics = true;
-        enabledDeviceFeatures.wideLines = true;
+        // enabledDeviceFeatures.wideLines = true;
 
         vk::DeviceCreateInfo deviceInfo;
         deviceInfo.queueCreateInfoCount = queueInfos.size();

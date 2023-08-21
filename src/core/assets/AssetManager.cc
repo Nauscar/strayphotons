@@ -24,6 +24,7 @@ extern "C" {
 #include <fstream>
 #include <iostream>
 #include <utility>
+#include <window.rs.h>
 
 #define TINYGLTF_IMPLEMENTATION
 #define STB_IMAGE_IMPLEMENTATION
@@ -166,7 +167,13 @@ namespace sp {
                 std::ifstream in;
                 size_t size;
 
-                if (InputStream(path, type, in, &size)) {
+                Logf("Loading asset: %s", path);
+                auto rvec = sp::winit::load_asset(path, &size);
+                auto asset = std::make_shared<Asset>(path);
+                std::copy(rvec.begin(), rvec.end(), std::back_inserter(asset->buffer));
+                return asset; // FIXME
+
+                /*if (InputStream(path, type, in, &size)) {
                     auto asset = std::make_shared<Asset>(path);
                     asset->buffer.resize(size);
                     in.read((char *)asset->buffer.data(), size);
@@ -177,7 +184,7 @@ namespace sp {
                 } else {
                     Warnf("Asset does not exist: %s", path);
                     return std::shared_ptr<Asset>();
-                }
+                }*/
             });
             loadedAssets[type].Register(path, asset, true /* allowReplace */);
         }

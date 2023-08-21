@@ -159,7 +159,7 @@ add_subdirectory(docs_generator)
 add_subdirectory(hull_compiler)
 add_subdirectory(scene_formatter)
 
-#TODO: where should this folder live? 
+#TODO: where should this folder live?
 add_subdirectory(rust/bin/demo/assets)
 
 if(SP_PACKAGE_RELEASE)

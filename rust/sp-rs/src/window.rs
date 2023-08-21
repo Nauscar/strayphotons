@@ -1,5 +1,5 @@
 use cxx::CxxString;
-use std::sync::Arc;
+use std::{error::Error, sync::Arc};
 #[cfg(not(any(target_os = "android", target_os = "ios")))]
 use std::{
     ops::Add,
@@ -258,6 +258,9 @@ mod ctx {
             ctx: *mut WinitInputHandler,
             _max_input_rate: u32,
         );
+
+        #[cfg(target_os = "android")]
+        unsafe fn load_asset(filename: &str, size: *mut usize) -> Result<Vec<u8>>;
     }
 }
 
@@ -285,7 +288,22 @@ pub struct MonitorContext {
 pub static APP: std::sync::OnceLock<winit::platform::android::activity::AndroidApp> =
     std::sync::OnceLock::new();
 
-fn create_view(context: &mut WinitContext, event_loop_window_target: & EventLoopWindowTarget<()>) {
+#[cfg(target_os = "android")]
+unsafe fn load_asset(filename: &str, size: *mut usize) -> Result<Vec<u8>, Box<dyn Error>> {
+    use std::ffi::CString;
+    use std::io::Read;
+
+    let asset_manager = APP.get().unwrap().asset_manager();
+    let mut asset = asset_manager
+        .open(&CString::new(format!("assets/{}", filename))?)
+        .expect("Could not open asset: {}");
+
+    let mut data = vec![];
+    *size = asset.read_to_end(&mut data)?;
+    Ok(data)
+}
+
+fn create_view(context: &mut WinitContext, event_loop_window_target: &EventLoopWindowTarget<()>) {
     let window: Arc<Window> = Arc::new(
         WindowBuilder::new()
             .with_title("STRAY PHOTONS")
@@ -374,7 +392,8 @@ fn create_context(width: i32, height: i32) -> Box<WinitContext> {
         library.clone(),
         InstanceCreateInfo {
             enabled_extensions: required_extensions,
-            enabled_layers: vec![], /* vec!["VK_LAYER_KHRONOS_validation".to_string()], */ // README: https://developer.android.com/ndk/guides/graphics/validation-layer
+            enabled_layers: vec![], /* vec!["VK_LAYER_KHRONOS_validation".to_string()], */
+            // README: https://developer.android.com/ndk/guides/graphics/validation-layer
             debug_utils_messengers: vec![], /* vec![debug_create_info], */
             ..Default::default()
         },
@@ -586,6 +605,7 @@ fn start_event_loop(
     _max_input_rate: u32,
 ) {
     let event_loop = context.event_loop.take().unwrap();
+    log::info!("Start event loop");
     event_loop
         .run(move |event, event_loop_window_target, control_flow| {
             match event {

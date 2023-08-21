@@ -23,7 +23,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     let mut sp = Config::new("../../");
 
     //#[cfg(target_os = "android")] // FIXME: check env::var("TARGET")
-    if let Ok(ndk) = std::env::var("ANDROID_NDK_HOME") {
+    if let Ok(ndk) = std::env::var("NDK_HOME") {
         //sp.define("CMAKE_SYSTEM_NAME", "Android"); // NOTE: enables armv7 support
         sp.define("ANDROID_NDK", ndk.clone());
         sp.define("CMAKE_ANDROID_NDK", ndk);
@@ -51,5 +51,6 @@ fn main() -> Result<(), Box<dyn Error>> {
     println!("cargo:rustc-link-search=native={}", bin_dir.display()); // Shared library path
     println!("cargo:rustc-link-lib=dylib=sp");
 
+    println!("cargo:rerun-if-changed=../sp-rs/build.rs");
     Ok(())
 }

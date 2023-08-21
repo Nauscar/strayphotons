@@ -40,6 +40,8 @@ add_library(sp SHARED
     graphics/GraphicsManager.cc
 )
 
+add_dependencies(sp models)
+
 target_include_directories(sp
     PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}

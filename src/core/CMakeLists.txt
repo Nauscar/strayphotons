@@ -22,6 +22,7 @@ target_link_libraries(${PROJECT_CORE_LIB} PUBLIC
     Tecs
     tinygltf
     TracyClient
+    sp-rs
 )
 
 if(WIN32)
