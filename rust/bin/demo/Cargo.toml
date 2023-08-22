@@ -9,12 +9,24 @@ license-file = "../../LICENSE-MPL-2.0"
 crate-type = ["cdylib", "staticlib", "rlib"]
 
 [[bin]]
+path = "src/desktop.rs"
 name = "demo-desktop"
-path = "gen/bin/desktop.rs"
 
 [dependencies]
 strayphotons = { version = "*", path = "../../strayphotons" }
 
+[package.metadata.android]
+pagkage = "net.strayphotons.demo"
+build_targets = ["aarch64-linux-android"]
+assets = "assets"
+apk_name = "Demo"
+runtime_libs = "app/src/main/jniLibs"
+
 [package.metadata.android.sdk]
 min_sdk_version = 29
 target_sdk_version = 34
+
+[[package.metadata.android.uses_feature]]
+name = "android.hardware.vulkan.level"
+required = true
+version = 1

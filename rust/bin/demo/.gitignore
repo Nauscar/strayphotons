@@ -1,10 +1,19 @@
+# Android
+*.iml
+.gradle
+/local.properties
+/.idea/caches/build_file_checksums.ser
+/.idea/libraries
+/.idea/modules.xml
+/.idea/workspace.xml
+/build
+/captures
+.externalNativeBuild
+jniLibs
+
 # Rust
 target/
 **/*.rs.bk
-
-# cargo-mobile
-.cargo/
-/gen
 
 # macOS
 .DS_Store

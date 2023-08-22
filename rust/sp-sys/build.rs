@@ -25,11 +25,11 @@ fn main() -> Result<(), Box<dyn Error>> {
     //#[cfg(target_os = "android")] // FIXME: check env::var("TARGET")
     if let Ok(ndk) = std::env::var("NDK_HOME") {
         //sp.define("CMAKE_SYSTEM_NAME", "Android"); // NOTE: enables armv7 support
-        sp.define("ANDROID_NDK", ndk.clone());
+        //sp.define("ANDROID_NDK", ndk.clone());
         sp.define("CMAKE_ANDROID_NDK", ndk);
         sp.define("CMAKE_ANDROID_API", "29"); // min api version for ndk vulkan support: 24
     }
-    println!("cargo:rerun-if-env-changed=ANDROID_NDK_HOME");
+    println!("cargo:rerun-if-env-changed=NDK_HOME");
 
     let sp = sp
         .generator("Ninja")

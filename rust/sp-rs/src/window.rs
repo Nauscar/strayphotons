@@ -295,8 +295,8 @@ unsafe fn load_asset(filename: &str, size: *mut usize) -> Result<Vec<u8>, Box<dy
 
     let asset_manager = APP.get().unwrap().asset_manager();
     let mut asset = asset_manager
-        .open(&CString::new(format!("assets/{}", filename))?)
-        .expect("Could not open asset: {}");
+        .open(&CString::new(filename)?)
+        .expect("Could not open asset");
 
     let mut data = vec![];
     *size = asset.read_to_end(&mut data)?;

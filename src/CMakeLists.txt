@@ -40,7 +40,7 @@ add_library(sp SHARED
     graphics/GraphicsManager.cc
 )
 
-add_dependencies(sp models)
+#add_dependencies(sp models) # FIXME: build shader and asset dependencies
 
 target_include_directories(sp
     PRIVATE
@@ -67,7 +67,7 @@ target_link_libraries(sp PUBLIC
     vulkan
 )
 
-target_link_directories(sp PUBLIC "${ANDROID_NDK}/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib/aarch64-linux-android/29/") # FIXME: min sdk version is wrong
+target_link_directories(sp PUBLIC "${CMAKE_ANDROID_NDK}/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib/aarch64-linux-android/29/") # FIXME: min sdk version is wrong
 
 if(WIN32)
     target_link_libraries(sp PUBLIC winmm)

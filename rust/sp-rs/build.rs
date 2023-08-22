@@ -38,7 +38,7 @@ fn main() -> Result<(), Box<dyn Error>> {
             build.include(path);
         }
     }
-    build.compile("sp-rs");
+    build.compile("sp-rs"); //
 
     let current_dir = env::current_dir()?;
     println!(
